@@ -59,11 +59,11 @@ export default defineConfig({
     },
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/YOUR_ORG/bupt-visiting-guide' },
+      { icon: 'github', link: 'https://github.com/bupt-visiting-guide/BUPT-VG' },
     ],
 
     editLink: {
-      pattern: 'https://github.com/YOUR_ORG/bupt-visiting-guide/edit/main/docs/:path',
+      pattern: 'https://github.com/bupt-visiting-guide/BUPT-VG/edit/main/docs/:path',
       text: '在 GitHub 上编辑此页',
     },
 
