@@ -1,0 +1,67 @@
+# Node
+node_modules/
+
+# VitePress build artifacts
+.vitepress/cache/
+.vitepress/dist/
+docs/.vitepress/dist/
+docs/.vitepress/cache/
+
+# Raw questionnaire data — NEVER commit personal data
+data/raw/*
+!data/raw/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+*.egg
+.venv/
+venv/
+*.venv
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment variables (contains API keys)
+.env
+.env.*
+!.env.example
+
+# Netlify CLI
+.netlify/
+
+# Claude Code
+.claude/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Desktop.ini
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Test coverage
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# Temp
+*.tmp
+temp/
+tmp/
