@@ -20,6 +20,7 @@
 10. [常见问题排查](#10-常见问题排查)
 11. [进阶：修改 LLM 提示词](#11-进阶修改-llm-提示词)
 12. [进阶：增加新的分类页面](#12-进阶增加新的分类页面)
+13. [Netlify Forms 数据回收流程](#13-netlify-forms-数据回收流程)
 
 ---
 
@@ -67,6 +68,8 @@ bupt-visiting-guide/
 │   │   ├── generated-insights.md
 │   │   ├── daily-life.md
 │   │   └── mental-health.md
+│   ├── contribute/
+│   │   └── index.md              # 经验征集页（Netlify Forms + 静态桩）
 │   └── insights/
 │       └── keyword-overview.md   # 手写骨架 + KeywordBubble 组件
 │
@@ -84,9 +87,10 @@ bupt-visiting-guide/
 └── .vitepress/
     ├── config.mts                # 导航、侧边栏、搜索配置
     └── theme/
-        ├── index.ts              # 注册 KeywordBubble 组件
+        ├── index.ts              # 注册 KeywordBubble、ExperienceForm 组件
         └── components/
-            └── KeywordBubble.vue # ECharts 词云组件
+            ├── KeywordBubble.vue  # ECharts 词云组件
+            └── ExperienceForm.vue # Netlify Forms 经验征集表单
 ```
 
 ### 文件生成关系
@@ -355,6 +359,62 @@ https://github.com/bupt-visiting-guide/BUPT-VG
    ```
 3. 在 `.vitepress/config.mts` 的 `nav` 和 `sidebar` 中添加对应条目
 4. 重新运行 ETL 脚本并验证
+
+---
+
+## 13. Netlify Forms 数据回收流程
+
+网站内置了经验征集表单（`/contribute/`），访问者提交的数据由 Netlify 自动收集。以下是完整的回收与消化流程：
+
+### 13.1 数据导出规范
+
+Netlify 原生支持将收集到的表单数据一键导出为 CSV：
+
+1. 登录 [Netlify 控制台](https://app.netlify.com)，进入项目
+2. 导航至 **Forms** 面板，选择 `experience-submission` 表单
+3. 点击 **Export to CSV**，下载收集到的表单数据
+
+### 13.2 无缝对接 ETL 管道
+
+导出的 CSV 字段名与前台表单一致（`category`、`content`、`alias`）。管道已在 Extract 阶段内置了以下自动转换，维护者无需手动预处理：
+
+- **`content` → `response`** 列名映射（`COLUMN_ALIASES`）
+- **中文分类 → 英文 key** 的自动转换（`CATEGORY_LABEL_MAP`：行前准备 → `pre-departure` 等）
+
+只需将下载的 CSV 重命名放入 `data/raw/`，运行 ETL 即可直接复用现有的 LLM 清洗与脱敏流水线：
+
+```bash
+# 1. 将下载的 CSV 重命名并放入数据目录
+mv ~/Downloads/experience-submission-export.csv data/raw/netlify-forms.csv
+
+# 2. 运行 ETL 脚本（LLM 自动清洗脱敏 + 生成摘要）
+python scripts/etl/run.py
+
+# 3. 预览 & 推送
+npm run docs:dev
+git add docs/
+git commit -m "chore: update content from Netlify Forms $(date +%Y-%m-%d)"
+git push
+```
+
+> 由于 ETL 的 Extract 阶段已内置 PII 脱敏逻辑（学号、手机号、邮箱），即使 Netlify Forms 未完全过滤个人信息，管道也会在写入前自动清除，无需手动预处理。
+
+### 13.3 架构总览
+
+```
+访问者 ──▶ /contribute/（ExperienceForm.vue）
+                 │
+                 │  POST form-name=experience-submission
+                 ▼
+          Netlify Edge ──▶ Netlify Forms 面板
+                 │              │
+                 │              │  Export to CSV
+                 │              ▼
+                 │         data/raw/  ──▶ ETL 管道 ──▶ generated-insights.md
+                 │                                      ▶ keywords.json
+                 ▼
+          上线前检查清单内联状态提示
+```
 
 ---
 

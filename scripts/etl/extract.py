@@ -12,6 +12,15 @@ COLUMN_ALIASES: dict[str, str] = {
     "分类":     "category",
     "回答内容": "response",
     "问题":     "question",
+    "content":  "response",   # Netlify Forms export (ExperienceForm.vue)
+}
+
+# Map Chinese category labels (used by Netlify Forms / questionnaire exports)
+# to internal English category keys expected by transform.py.
+CATEGORY_LABEL_MAP: dict[str, str] = {
+    "行前准备":   "pre-departure",
+    "学业与科研": "academics",
+    "生活与心态": "life-and-mindset",
 }
 
 # ── PII anonymization ─────────────────────────────────────────────────────────
@@ -50,6 +59,9 @@ def read_all_csvs() -> list[dict]:
             )
 
         df["source_file"] = csv_path.name
+        # Map Chinese category labels to internal English keys
+        if "category" in df.columns:
+            df["category"] = df["category"].map(CATEGORY_LABEL_MAP).fillna(df["category"])
         # Anonymize in place before any downstream processing
         df["response"] = df["response"].fillna("").astype(str).apply(anonymize)
         rows.extend(df.to_dict(orient="records"))

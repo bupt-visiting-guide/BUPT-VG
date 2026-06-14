@@ -1,6 +1,9 @@
 import DefaultTheme from 'vitepress/theme'
 import type { Theme } from 'vitepress'
 import { defineAsyncComponent } from 'vue'
+// ExperienceForm uses only `ref` and a user-triggered `fetch` — no top-level
+// DOM access — so it is SSR-safe and does not need defineAsyncComponent.
+import ExperienceForm from './components/ExperienceForm.vue'
 
 // echarts-wordcloud accesses `document` at import time — SSR-unsafe.
 // defineAsyncComponent defers the import to client hydration, avoiding
@@ -13,6 +16,7 @@ const theme: Theme = {
   extends: DefaultTheme,
   enhanceApp({ app }) {
     app.component('KeywordBubble', KeywordBubble)
+    app.component('ExperienceForm', ExperienceForm)
   },
 }
 
