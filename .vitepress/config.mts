@@ -60,8 +60,8 @@ export default defineConfig({
     },
 
     footer: {
-      message: '基于 VitePress 构建 · 数据来自北邮访学问卷',
-      copyright: 'Copyright © 2024–present BUPT Visiting Guide Contributors',
+      message: '基于 VitePress 构建 · 内容来自北邮访学同学贡献',
+      copyright: 'Copyright © 2026–present BUPT Visiting Guide Contributors',
     },
 
     search: {

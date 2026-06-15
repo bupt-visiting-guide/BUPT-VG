@@ -104,14 +104,13 @@ def extract_row_metadata(rows: list[dict]) -> list[dict]:
         for j, row in enumerate(batch):
             meta = meta_map.get(batch_start + j, {})
             text = str(row.get("response", "")).strip()
-            # Prefer explicitly submitted major (form field) over LLM guess
-            user_major = str(row.get("major") or "").strip() or None
             enriched.append({
                 "id":            _row_id(text),
                 "original_text": text,
                 "category":      str(row.get("category", "")).strip(),
                 "tags":          meta.get("tags") or [],
-                "major":         user_major if user_major else meta.get("major"),
+                "alias":         str(row.get("alias") or "").strip() or None,
+                "major":         meta.get("major"),
                 "source_file":   str(row.get("source_file", "")),
             })
 

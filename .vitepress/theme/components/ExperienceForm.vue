@@ -2,13 +2,10 @@
 import { ref } from 'vue'
 
 type Status = 'idle' | 'submitting' | 'success' | 'error'
-type Mode   = 'structured' | 'bulk'
 
-const mode       = ref<Mode>('structured')
 const category   = ref('')
 const content    = ref('')
-const major      = ref('')
-const rawContent = ref('')
+const alias      = ref('')
 const attachFile = ref<File | null>(null)
 const fileError  = ref('')
 const status     = ref<Status>('idle')
@@ -29,26 +26,16 @@ function handleFileChange(e: Event) {
 }
 
 async function handleSubmit() {
-  if (mode.value === 'bulk' && !rawContent.value.trim() && !attachFile.value) {
-    errorMsg.value = '请填写原始文本或上传附件（至少提供其中一项）'
-    return
-  }
-
   status.value = 'submitting'
   errorMsg.value = ''
 
   const fd = new FormData()
   fd.append('form-name', 'experience-submission')
   fd.append('bot-field', '')
-
-  if (mode.value === 'structured') {
-    fd.append('category', category.value)
-    fd.append('content',  content.value)
-    fd.append('major',    major.value)
-  } else {
-    fd.append('raw_content', rawContent.value)
-    if (attachFile.value) fd.append('attachment', attachFile.value)
-  }
+  fd.append('category', category.value)
+  fd.append('content', content.value)
+  fd.append('alias', alias.value)
+  if (attachFile.value) fd.append('attachment', attachFile.value)
 
   try {
     // 不设置 Content-Type，让浏览器自动生成带 boundary 的 multipart/form-data 头
@@ -68,78 +55,51 @@ async function handleSubmit() {
     class="ef-form"
     @submit.prevent="handleSubmit"
   >
-    <!-- 模式切换 -->
-    <div class="ef-mode-switch" role="group" aria-label="提交模式">
-      <label :class="['ef-mode-btn', { 'ef-mode-btn--active': mode === 'structured' }]">
-        <input type="radio" v-model="mode" name="ef-mode" value="structured" class="ef-sr-only" />
-        结构化提交
-      </label>
-      <label :class="['ef-mode-btn', { 'ef-mode-btn--active': mode === 'bulk' }]">
-        <input type="radio" v-model="mode" name="ef-mode" value="bulk" class="ef-sr-only" />
-        历史数据灌入
-      </label>
-    </div>
-
-    <!-- 模式 A：结构化字段 -->
-    <div v-show="mode === 'structured'" class="ef-field">
-      <label for="ef-category">经验分类 <span aria-hidden="true">*</span></label>
-      <select id="ef-category" v-model="category" name="category" :required="mode === 'structured'">
-        <option value="" disabled>请选择分类</option>
+    <div class="ef-field">
+      <label for="ef-category">经验分类（选填，若不确定具体分类可留空，系统会自动归档）</label>
+      <select id="ef-category" v-model="category" name="category">
+        <option value="">请选择分类</option>
         <option value="行前准备">行前准备</option>
         <option value="学业与科研">学业与科研</option>
         <option value="生活与心态">生活与心态</option>
       </select>
     </div>
 
-    <div v-show="mode === 'structured'" class="ef-field">
+    <div class="ef-field">
       <label for="ef-content">经验内容 <span aria-hidden="true">*</span></label>
       <textarea
         id="ef-content"
         v-model="content"
         name="content"
         rows="6"
-        :minlength="mode === 'structured' ? 20 : undefined"
-        :required="mode === 'structured'"
+        minlength="20"
+        required
         placeholder="请描述你的亲身经验（至少 20 字）"
       />
     </div>
 
-    <div v-show="mode === 'structured'" class="ef-field">
-      <label for="ef-major">专业（可选）</label>
+    <div class="ef-field">
+      <label for="ef-attachment">文件附件（PDF / Word / TXT，≤ 5 MB，选填）</label>
       <input
-        id="ef-major"
-        v-model="major"
-        type="text"
-        name="major"
-        placeholder="例如：计算机科学 / 通信工程"
+        id="ef-attachment"
+        type="file"
+        name="attachment"
+        accept=".pdf,.txt,.doc,.docx"
+        class="ef-file-input"
+        @change="handleFileChange"
       />
+      <p v-if="fileError" class="ef-error" role="alert">{{ fileError }}</p>
     </div>
 
-    <!-- 模式 B：非结构化字段 -->
-    <div v-show="mode === 'bulk'">
-      <div class="ef-field">
-        <label for="ef-raw-content">原始文本（粘贴微信记录 / 邮件等）</label>
-        <textarea
-          id="ef-raw-content"
-          v-model="rawContent"
-          name="raw_content"
-          rows="10"
-          placeholder="将非结构化文本直接粘贴于此"
-        />
-      </div>
-
-      <div class="ef-field">
-        <label for="ef-attachment">文件附件（PDF / Word / TXT，≤ 5 MB）</label>
-        <input
-          id="ef-attachment"
-          type="file"
-          name="attachment"
-          accept=".pdf,.doc,.docx,.txt"
-          class="ef-file-input"
-          @change="handleFileChange"
-        />
-        <p v-if="fileError" class="ef-error" role="alert">{{ fileError }}</p>
-      </div>
+    <div class="ef-field">
+      <label for="ef-alias">化名（选填）</label>
+      <input
+        id="ef-alias"
+        v-model="alias"
+        type="text"
+        name="alias"
+        placeholder="例如：沙河老学长 / 匿名理工妹"
+      />
     </div>
 
     <p v-if="status === 'error'" class="ef-error" role="alert">{{ errorMsg }}</p>
@@ -161,36 +121,6 @@ async function handleSubmit() {
   gap: 1.25rem;
   max-width: 600px;
   margin: 1.5rem 0;
-}
-.ef-mode-switch {
-  display: flex;
-  gap: 0;
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 20px;
-  overflow: hidden;
-  width: fit-content;
-}
-.ef-mode-btn {
-  padding: 0.4rem 1.1rem;
-  font-size: 0.88rem;
-  font-weight: 500;
-  cursor: pointer;
-  color: var(--vp-c-text-2);
-  background: transparent;
-  transition: background 0.15s, color 0.15s;
-  user-select: none;
-}
-.ef-mode-btn--active {
-  background: var(--vp-c-brand-1);
-  color: var(--vp-button-brand-text);
-}
-.ef-sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
 }
 .ef-field {
   display: flex;

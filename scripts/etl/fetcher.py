@@ -98,9 +98,9 @@ def fetch_and_parse_submissions(form_id: str, token: str) -> list[dict]:
 
         text_parts: list[str] = []
 
-        raw_content = data.get("raw_content") or data.get("content") or ""
-        if raw_content:
-            text_parts.append(str(raw_content).strip())
+        content_text = str(data.get("content") or "").strip()
+        if content_text:
+            text_parts.append(content_text)
 
         for field in sub.get("ordered_human_fields", []):
             if field.get("name") == "attachment" and field.get("value"):
@@ -112,11 +112,12 @@ def fetch_and_parse_submissions(form_id: str, token: str) -> list[dict]:
                 except Exception:
                     text_parts.append("[FILE_CORRUPTED: 文件损坏或格式错误]")
 
-        combined = "\n\n".join(text_parts).strip()
+        combined = "\n".join(text_parts).strip()
         if combined:
             rows.append({
                 "response": combined,
                 "category": str(data.get("category", "")).strip(),
+                "alias":    str(data.get("alias") or "").strip() or None,
                 "source_file": f"netlify:{sub_id}",
             })
 

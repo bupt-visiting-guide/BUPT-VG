@@ -22,9 +22,8 @@ description: 分享你的访学经历，帮助后来者少走弯路
   <input name="bot-field" />
   <select name="category"></select>
   <textarea name="content"></textarea>
-  <input name="major" />
-  <textarea name="raw_content"></textarea>
-  <input type="file" name="attachment" accept=".pdf,.doc,.docx,.txt" />
+  <input name="alias" />
+  <input type="file" name="attachment" accept=".pdf,.txt,.doc,.docx" />
 </form>
 
 <ExperienceForm />
