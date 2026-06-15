@@ -29,8 +29,8 @@
 | --- | --- | --- |
 | `/` 首页 | ✅ | Hero + 4 Feature 卡片 |
 | `/pre-departure/` 行前概览 | ✅ | 章节导读 + 核心提示 |
-| `/pre-departure/visa-and-documents` | ✅ | 签证类型、时间线、材料清单 |
-| `/pre-departure/packing-checklist` | ✅ | 证件/电子/生活三大类 + 重量提示 |
+| `/pre-departure/registration-and-credits` | ✅ | 跨校报到流程、学分转换前置手续、校园账号激活 |
+| `/pre-departure/packing-checklist` | ✅ | 报到必备文件、电子设备、生活用品 |
 | `/academics/` 学业概览 | ✅ | 章节导读 + 核心提示 |
 | `/academics/course-selection` | ✅ | 调研方法、课程搭配表、学分转换 |
 | `/academics/lab-and-research` | ✅ | 首月建议、导师沟通表、常见隐患 |
@@ -74,7 +74,7 @@
 | --- | --- | --- |
 | `data/raw/` | ⬜ 空目录（仅 .gitkeep） | 需放入问卷 CSV 后运行 ETL 管道；数据来源：历届问卷导出 或 Netlify Forms 导出 |
 
-> **注意**：`keywords.json` 中当前 15 个关键词的频次来自种子关键词在空数据上的直接计数，放 CSV 后重新跑 `python scripts/etl/run.py` 即可覆盖为真实数据。
+> **注意**：`keywords.json` 中的关键词频次由 CSV 数据驱动生成，放入新 CSV 后运行 `.venv/Scripts/python scripts/etl/run.py`（或 `.venv/bin/python`）即可覆盖更新。
 
 ### 3.2 未生成的内容
 
@@ -82,9 +82,9 @@
 
 | 文件 | 状态 | 触发方式 |
 | --- | --- | --- |
-| `docs/pre-departure/generated-insights.md` | ⬜ 待生成 | `python scripts/etl/run.py` |
-| `docs/academics/generated-insights.md` | ⬜ 待生成 | `python scripts/etl/run.py` |
-| `docs/life-and-mindset/generated-insights.md` | ⬜ 待生成 | `python scripts/etl/run.py` |
+| `docs/pre-departure/generated-insights.md` | ⬜ 待生成 | `.venv/Scripts/python scripts/etl/run.py` |
+| `docs/academics/generated-insights.md` | ✅ 已生成 | 由 1 条 Netlify Forms 批量提交数据驱动 LLM 生成 |
+| `docs/life-and-mindset/generated-insights.md` | ⬜ 待生成 | `.venv/Scripts/python scripts/etl/run.py`（需对应分类的 CSV 数据） |
 
 ---
 
@@ -93,11 +93,11 @@
 | 维度 | 数量 |
 | --- | --- |
 | 手写文档页面 | 12 个 |
-| LLM 自动生成页面 | 3 个（待 CSV 数据驱动） |
+| LLM 自动生成页面 | 3 个（1 个已生成，2 个待数据） |
 | ETL 脚本 | 5 个 Python 文件 |
 | LLM 提示词 | 2 个模板 |
 | 前端组件 | 2 个（KeywordBubble.vue、ExperienceForm.vue） |
-| 种子关键词 | 15 个 |
+| ETL 生成关键词 | 27 个（由 CSV 数据 + LLM 提取） |
 | 内容分类 | 3 个（行前/学业/生活） |
 | 总代码行数（估） | ~1,200 行（含 Python + Vue + TS） |
 
@@ -110,8 +110,8 @@
 npm run docs:dev                    # 启动热更新服务器 → http://localhost:5173
 
 # 内容更新（放入 CSV 后）
-python scripts/etl/run.py           # CSV → LLM 提炼 → Markdown + JSON
-npm run docs:dev                    # 本地预览确认
+.venv/Scripts/python scripts/etl/run.py  # CSV → LLM 提炼 → Markdown + JSON
+npm run docs:dev                         # 本地预览确认
 
 # 部署
 npm run docs:build                  # 构建生产版本
@@ -162,7 +162,7 @@ docs/                        .vitepress/
   index.md                      config.mts    ← 导航/侧边栏/搜索
   pre-departure/                theme/
     index.md (手写)               index.ts     ← 注册 KeywordBubble、ExperienceForm
-    visa-and-documents.md         components/
+    registration-and-credits.md    components/
     packing-checklist.md            KeywordBubble.vue  ← 词云
     generated-insights.md (LLM)     ExperienceForm.vue ← 经验征集
   academics/                   

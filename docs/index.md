@@ -16,7 +16,7 @@ hero:
 features:
   - icon: 🗂️
     title: 行前准备
-    details: 签证办理、材料清单、行李打包——出发前你需要知道的一切。
+    details: 报到注册、学分转换前置手续、行李打包——出发前你需要知道的一切。
     link: /pre-departure/
   - icon: 📚
     title: 学业与科研
@@ -24,7 +24,7 @@ features:
     link: /academics/
   - icon: 🌱
     title: 生活与心态
-    details: 日常生活适应、文化冲击应对，以及保持积极心态的实用建议。
+    details: 日常生活适应、校园边缘感调试，以及保持积极心态的实用建议。
     link: /life-and-mindset/
   - icon: 🔍
     title: 关键词图谱

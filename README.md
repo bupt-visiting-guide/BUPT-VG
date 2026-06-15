@@ -56,7 +56,7 @@ bupt-visiting-guide/
 │   ├── pre-departure/
 │   │   ├── index.md              # 手写概览
 │   │   ├── generated-insights.md # LLM 提炼摘要（自动覆盖）
-│   │   ├── visa-and-documents.md
+│   │   ├── registration-and-credits.md
 │   │   └── packing-checklist.md
 │   ├── academics/
 │   │   ├── index.md
@@ -195,14 +195,17 @@ CSV 必须包含以下列（列名可为中文或英文）：
 | 列名 | 说明 |
 | --- | --- |
 | `回答内容` 或 `response` | 必填，学生的回答文本 |
-| `分类` 或 `category` | 可选，值为 `pre-departure` / `academics` / `life-and-mindset` |
+| `分类` 或 `category` | 可选，值为 `pre-departure` / `academics` / `life-and-mindset` 或中文标签（`行前准备` / `学业与科研` / `生活与心态`），缺失时 ETL 会通过关键词自动分类 |
+| `raw_content` | 可选，Netlify Forms 批量灌入模式的非结构化内容，当 `response` 为空时自动合并 |
 
-> 如 CSV 导出时的列名与上述不同，在 `scripts/etl/extract.py` 的 `COLUMN_ALIASES` 字典中添加映射即可。
+> 如 CSV 导出时的列名与上述不同，在 `scripts/etl/extract.py` 的 `COLUMN_ALIASES` 字典中添加映射即可。`raw_content` → `response` 的合并逻辑已在 `extract.py` 中内置。
 
 ### 步骤二：运行 ETL 脚本
 
 ```bash
-python scripts/etl/run.py
+# 激活虚拟环境后运行（或直接使用 .venv 中的 Python）
+.venv/Scripts/python scripts/etl/run.py    # Windows
+.venv/bin/python scripts/etl/run.py        # macOS / Linux
 ```
 
 脚本会自动完成以下操作：
@@ -233,7 +236,7 @@ git push
 | --- | --- | --- |
 | `docs/{category}/index.md` | 手动编辑 | 手写概览页，脚本**不会**覆盖 |
 | `docs/{category}/generated-insights.md` | 通过脚本生成 | 每次跑 ETL 会覆盖 |
-| `docs/{category}/*.md`（其他子页面） | 手动编辑 | 如 `visa-and-documents.md`、`daily-life.md` 等 |
+| `docs/{category}/*.md`（其他子页面） | 手动编辑 | 如 `registration-and-credits.md`、`daily-life.md` 等 |
 | `docs/insights/keyword-overview.md` | 手动编辑 | 手写说明文字，词云图由 `<KeywordBubble />` 组件渲染 |
 | `docs/public/data/keywords.json` | 通过脚本生成 | 前端词云的数据源 |
 | `docs/index.md` | 手动编辑 | 首页 Hero + Feature 布局 |
@@ -341,7 +344,7 @@ https://github.com/bupt-visiting-guide/BUPT-VG
 
 ## 11. 进阶：修改 LLM 提示词
 
-编辑以下文件，然后重新运行 `python scripts/etl/run.py`：
+编辑以下文件，然后重新运行 `.venv/Scripts/python scripts/etl/run.py`：
 
 - `scripts/etl/prompts/insight_extraction.txt` — 控制各分类摘要的输出格式（核心建议、常见困难、综合总结）
 - `scripts/etl/prompts/keyword_extraction.txt` — 控制 LLM 关键词的提取数量、长度和输出格式
@@ -388,7 +391,8 @@ Netlify 原生支持将收集到的表单数据一键导出为 CSV：
 mv ~/Downloads/experience-submission-export.csv data/raw/netlify-forms.csv
 
 # 2. 运行 ETL 脚本（LLM 自动清洗脱敏 + 生成摘要）
-python scripts/etl/run.py
+.venv/Scripts/python scripts/etl/run.py    # Windows
+.venv/bin/python scripts/etl/run.py        # macOS / Linux
 
 # 3. 预览 & 推送
 npm run docs:dev
@@ -515,7 +519,7 @@ category_summaries, keyword_counts = transform(rows)
 - [ ] `.vitepress/config.mts` 中的仓库 URL 与实际 GitHub 地址一致（参考 [8.2 节](#82-configmts-中的仓库地址)）
 - [ ] Netlify 已关联 GitHub 仓库（参考 [8.3 节](#83-连接-netlify)）
 - [ ] `data/raw/` 中有至少一个 CSV 文件
-- [ ] `python scripts/etl/run.py` 成功完成
+- [ ] `.venv/Scripts/python scripts/etl/run.py` 成功完成（macOS/Linux 使用 `.venv/bin/python`）
 - [ ] `npm run docs:dev` 本地预览无异常
 - [ ] 词云页面 `/insights/keyword-overview` 正常渲染
 - [ ] 各页面 GitHub 编辑链接指向正确的仓库路径

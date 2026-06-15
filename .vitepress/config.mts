@@ -24,7 +24,7 @@ export default defineConfig({
           text: '行前准备',
           items: [
             { text: '概览', link: '/pre-departure/' },
-            { text: '签证与材料', link: '/pre-departure/visa-and-documents' },
+            { text: '报到与手续', link: '/pre-departure/registration-and-credits' },
             { text: '行李清单', link: '/pre-departure/packing-checklist' },
           ],
         },
