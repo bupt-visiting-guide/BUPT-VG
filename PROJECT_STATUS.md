@@ -19,7 +19,7 @@
 | VitePress 配置 (`config.mts`) | ✅ 完成 | 导航栏 5 项、侧边栏 3 组、本地搜索、GitHub 链接 |
 | 首页 (`docs/index.md`) | ✅ 完成 | Hero + 4 个 Feature 卡片，含跳转链接 |
 | 自定义主题 (`theme/index.ts`) | ✅ 完成 | 扩展默认主题，注册 ExperienceForm、ExperienceWall 组件 |
-| 经验征集表单 (`ExperienceForm.vue`) | ✅ 完成 | 双模式表单（结构化提交 / 批量灌入+附件上传），FormData POST 到 Netlify Forms，SSR-safe |
+| 经验征集表单 (`ExperienceForm.vue`) | ✅ 完成 | 单模式表单（category / content / alias / attachment），FormData POST 到 Netlify Forms，SSR-safe |
 | 经验卡片墙 (`ExperienceWall.vue`) | ✅ 完成 | 客户端异步加载 `experiences.json`，4 行预览 + 原生 `<dialog>` 弹窗详情 + 标签筛选 + 响应式 CSS columns 卡片墙 |
 
 ### 2.2 文档内容（11 个页面）
@@ -42,11 +42,11 @@
 
 | 模块 | 状态 | 说明 |
 | --- | --- | --- |
-| `extract.py` | ✅ 完成 | CSV 读取、列名别名映射（含 Netlify Forms `content`→`response` 及中文分类→英文 key）、CSV 附件列下载解析、PII 正则脱敏、空行过滤 |
-| `transform.py` | ✅ 完成 | 逐行 LLM 元数据提取（`tags` + `major`），batch=20，原文不修改；失败自动降级为空元数据；category 缺失时通过 tags 关键词匹配自动补全 |
+| `extract.py` | ✅ 完成 | CSV 读取、列名别名映射（含 Netlify Forms `content`→`response` 及中文分类→英文 key）、CSV 附件列下载解析、PII 正则脱敏、解析器占位符过滤、空行过滤 |
+| `transform.py` | ✅ 完成 | 逐行 LLM 元数据提取（`tags` + `major`），batch=20，原文不修改；失败自动降级为空元数据；category 缺失时通过 tags 关键词匹配自动补全；`row_id` 统一引用 `config.py` |
 | `load.py` | ✅ 完成 | 增量追加写入 `experiences.json`，按 MD5 id 去重；损坏 JSON 时自动重建 |
-| `run.py` | ✅ 完成 | 三阶段管道入口，错误兜底处理 |
-| `config.py` | ✅ 完成 | 路径、LLM Provider 切换、`EXPERIENCES_JSON_PATH` 常量 |
+| `run.py` | ✅ 完成 | 三阶段管道入口，调用 LLM 前预过滤 `experiences.json` 已有记录以节省 API 成本，错误兜底处理 |
+| `config.py` | ✅ 完成 | 路径、LLM Provider 切换、`EXPERIENCES_JSON_PATH` 常量、`row_id()` 共享 ID 生成函数 |
 | `prompts/row_extraction.txt` | ✅ 完成 | 逐行提取 `tags`（2-3 词）+ `major`（仅专业背景，禁止提取姓名）JSON 数组输出 |
 | `fetcher.py` | ✅ 完成 | Netlify Forms API 拉取 + 附件下载缓存 + 关键词自动分类，返回与 `read_all_csvs()` 同构的行列表 |
 | `parser.py` | ✅ 完成 | 附件文本提取（TXT / 文本型 PDF / DOCX），永不抛异常；图片/扫描 PDF 返回语义化占位符 |
@@ -78,7 +78,7 @@
 | 位置 | 状态 | 说明 |
 | --- | --- | --- |
 | `data/raw/` | ⬜ 空目录（仅 .gitkeep） | 需放入问卷 CSV 后运行 ETL 管道；数据来源：历届问卷导出 或 Netlify Forms 导出 |
-| `docs/public/data/experiences.json` | ✅ 已存在 | 当前为空（0 条记录），放入 CSV 运行 ETL 后自动填充 |
+| `docs/public/data/experiences.json` | ✅ 已存在 | 当前含 3 条记录（2026-06-15），放入新 CSV 运行 ETL 后自动追加去重 |
 
 > **数据更新流程**：放入 CSV → 运行 `.venv/Scripts/python scripts/etl/run.py` → 脚本对每条原文调用 LLM 提取 tags/major → 追加写入 `experiences.json`（MD5 去重）→ 推送后前端卡片墙自动更新。
 
@@ -154,7 +154,9 @@ git add docs/ && git commit -m "..." && git push  # 推送自动部署
 │  rows (同构 list[dict])                     │
 └────────────────────┬────────────────────────┘
                      │
-                     ▼  extract.py（CSV 读取 + PII 脱敏 + 字段映射）
+                     ▼  extract.py（CSV 读取 + PII 脱敏 + 字段映射 + 占位符过滤）
+                     │
+                     ▼  run.py pre-filter（跳过 experiences.json 已有记录，节省 LLM 调用）
                      │
                      ▼  transform.py（LLM 逐行提取 tags + major）
                      │

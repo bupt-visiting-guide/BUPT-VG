@@ -2,7 +2,6 @@
 Transform phase — per-row metadata extraction.
 LLM extracts tags + major only; original_text passes through unchanged.
 """
-import hashlib
 import json
 import logging
 import re
@@ -11,7 +10,7 @@ from pathlib import Path
 from openai import OpenAI, APIError, APITimeoutError, RateLimitError
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-from config import API_KEYS, LLM_ENDPOINTS, LLM_PROVIDER
+from config import API_KEYS, LLM_ENDPOINTS, LLM_PROVIDER, row_id
 
 logger = logging.getLogger(__name__)
 
@@ -24,9 +23,6 @@ def _clean_str(value) -> str | None:
     s = str(value).strip() if value is not None else ""
     return None if s.lower() in _NAN_STRINGS else s
 
-
-def _row_id(text: str) -> str:
-    return hashlib.md5(text.encode()).hexdigest()[:12]
 
 
 def _get_client() -> tuple[OpenAI, str]:
@@ -120,7 +116,7 @@ def extract_row_metadata(rows: list[dict]) -> list[dict]:
                 if tags_text:
                     category = classify_category(tags_text) or category
             enriched.append({
-                "id":            _row_id(text),
+                "id":            row_id(text),
                 "original_text": text,
                 "category":      category,
                 "tags":          tags,

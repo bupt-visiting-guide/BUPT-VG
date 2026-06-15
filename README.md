@@ -191,9 +191,9 @@ CSV 必须包含以下列（列名可为中文或英文）：
 | --- | --- |
 | `回答内容` 或 `response` | 必填，学生的回答文本 |
 | `分类` 或 `category` | 可选，值为 `pre-departure` / `academics` / `life-and-mindset` 或中文标签（`行前准备` / `学业与科研` / `生活与心态`），缺失时 ETL 会通过关键词自动分类 |
-| `raw_content` | 可选，Netlify Forms 批量灌入模式的非结构化内容，当 `response` 为空时自动合并 |
+| `raw_content` | 可选，旧版导出或外部来源的非结构化内容，当 `response` 为空时自动合并 |
 
-> 如 CSV 导出时的列名与上述不同，在 `scripts/etl/extract.py` 的 `COLUMN_ALIASES` 字典中添加映射即可。`raw_content` → `response` 的合并逻辑已在 `extract.py` 中内置。
+> 如 CSV 导出时的列名与上述不同，在 `scripts/etl/extract.py` 的 `COLUMN_ALIASES` 字典中添加映射即可。`raw_content` 列（如有）会在 `response` 为空时自动合并，兼容旧版导出格式。
 
 ### 步骤二：运行 ETL 脚本
 
@@ -395,7 +395,7 @@ git push
 
 ### 13.4 文件附件在 Netlify 中的导出形态
 
-表单支持两种录入模式（自 2026-06 起）：结构化提交（category / content / alias / attachment）和历史数据灌入（raw_content + attachment 文件，用于批量导入过往经验）。
+表单字段：经验分类（选填）、经验内容、文件附件（选填，PDF / Word / TXT，≤ 5 MB）、化名（选填）。
 
 当提交包含文件附件时，Netlify **不会**将文件内嵌到 CSV 导出中，而是以**可下载 URL** 的形式呈现。在 Netlify 控制台的 **Forms → Submissions** JSON 视图中，`attachment` 字段的值类似于：
 
@@ -407,79 +407,15 @@ https://netlify-form-data.s3.amazonaws.com/<site-id>/<submission-id>/attachment/
 
 CSV 导出中该字段会显示为附件文件名（非 URL），完整 URL 需通过 API 方式获取（见下节）。
 
-### 13.5 ETL 管道扩展：处理附件与非结构化文本
+### 13.5 通过 Netlify API 拉取附件内容
 
-包含 `raw_content` 或 `attachment` 字段的提交属于非结构化数据，需要额外的预处理步骤才能流入现有 ETL 管道。以下是推荐的扩展思路：
+除 CSV 导出外，管道还提供了 `fetcher.py` 直接通过 Netlify API 拉取提交数据（含附件下载），与 `parser.py` 配合实现附件文本提取。此通道已内置在 ETL 架构中（见 [§7 架构图](#7-数据流与架构) 中的通道 C）。
 
-**第一步：通过 Netlify API 拉取提交列表**
+**`fetcher.py`** — 调用 Netlify Forms API 拉取全部提交，下载附件到 `.vitepress/cache/attachments/`，并通过关键词自动分类，返回与 `read_all_csvs()` 同构的 `list[dict]`。
 
-CSV 导出不含附件 URL，需使用 Netlify API：
+**`parser.py`** — 从本地附件文件中提取纯文本，支持 TXT / 文本型 PDF / DOCX。对图片、扫描 PDF 等无法提取的文件返回语义化占位符，不中断批处理流程。详见 [§13.6](#136-已知限制与未来演进-roadmap)。
 
-```python
-import requests
-
-NETLIFY_TOKEN = "your-personal-access-token"
-FORM_ID = "your-form-id"  # 在 Netlify Forms 面板 URL 中可见
-
-resp = requests.get(
-    f"https://api.netlify.com/api/v1/forms/{FORM_ID}/submissions",
-    headers={"Authorization": f"Bearer {NETLIFY_TOKEN}"},
-)
-submissions = resp.json()  # 每条含 data 字段（raw_content, attachment URL 等）
-```
-
-**第二步：下载附件并提取文本**
-
-根据文件扩展名选择对应的解析库：
-
-```python
-import pdfplumber          # PDF：pip install pdfplumber
-from docx import Document  # Word：pip install python-docx
-import io
-
-def extract_text_from_attachment(url: str, filename: str) -> str:
-    raw = requests.get(url).content
-    ext = filename.rsplit(".", 1)[-1].lower()
-    if ext == "txt":
-        return raw.decode("utf-8", errors="replace")
-    elif ext == "pdf":
-        with pdfplumber.open(io.BytesIO(raw)) as pdf:
-            return "\n".join(p.extract_text() or "" for p in pdf.pages)
-    elif ext in ("doc", "docx"):
-        doc = Document(io.BytesIO(raw))
-        return "\n".join(p.text for p in doc.paragraphs)
-    return ""
-```
-
-**第三步：与 raw_content 合并，流入 ETL 管道**
-
-将文件提取文本与同一提交的 `raw_content` 拼接，构造与现有 CSV 行同构的记录：
-
-```python
-def netlify_submission_to_row(sub: dict) -> dict:
-    data = sub.get("data", {})
-    text_parts = []
-    if data.get("raw_content"):
-        text_parts.append(data["raw_content"])
-    for att in sub.get("ordered_human_fields", []):
-        if att["name"] == "attachment" and att.get("value"):
-            text_parts.append(extract_text_from_attachment(att["value"], att.get("title", "file")))
-    return {"response": "\n\n".join(text_parts), "category": ""}
-```
-
-**第四步：集成到 `scripts/etl/extract.py`**
-
-在 `extract.py` 中新增 `read_netlify_submissions()` 函数，与 `read_all_csvs()` 返回同构的行列表。`run.py` 的 `main()` 将两路数据合并后统一传入 `transform()`：
-
-```python
-# run.py 扩展示意（不影响现有 CSV 流程）
-rows_csv = read_all_csvs()
-rows_netlify = read_netlify_submissions()   # 新增
-rows = rows_csv + rows_netlify
-category_summaries = transform(rows)
-```
-
-> 注意：`attachment` 字段中的文件内容未经 PII 脱敏，建议在 `extract_text_from_attachment()` 之后复用 `extract.py` 中现有的 `strip_pii()` 函数进行脱敏，再拼接到 `response` 字段中。
+两模块的协作流程参见项目架构图（[PROJECT_STATUS.md §6](./PROJECT_STATUS.md#6-项目架构图)），无需维护者手动干预。
 
 ---
 

@@ -2,6 +2,7 @@
 Central configuration — all paths and API settings flow through here.
 Non-technical maintainers: only this file and .env need to change.
 """
+import hashlib
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -28,4 +29,9 @@ API_KEYS: dict[str, str] = {
     "kimi":     os.getenv("KIMI_API_KEY", ""),
     "openai":   os.getenv("OPENAI_API_KEY", ""),
 }
+
+
+def row_id(text: str) -> str:
+    """12-char MD5 of the raw response text; shared id contract for the whole pipeline."""
+    return hashlib.md5(text.encode()).hexdigest()[:12]
 
