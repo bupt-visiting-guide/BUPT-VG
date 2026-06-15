@@ -26,7 +26,7 @@ CATEGORY_LABEL_MAP: dict[str, str] = {
 # Keyword-based category classifier for rows without a category label
 # (e.g. bulk-mode submissions from Netlify Forms).
 _CATEGORY_KEYWORDS: dict[str, list[str]] = {
-    "pre-departure":    ["签证", "护照", "行李", "机票", "住宿", "宿舍", "材料", "打包", "体检", "机票", "航班"],
+    "pre-departure":    ["行李", "机票", "火车票", "住宿", "宿舍", "材料", "打包", "体检", "航班"],
     "academics":        ["课程", "选课", "学分", "考试", "考核", "导师", "实验室", "论文", "绩点", "科研", "实习", "考研", "保研", "竞赛"],
     "life-and-mindset": ["生活", "饮食", "交通", "社交", "心态", "心理", "文化", "孤独", "压力", "焦虑", "思乡", "适应"],
 }
