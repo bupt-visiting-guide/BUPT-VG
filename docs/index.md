@@ -30,4 +30,8 @@ features:
     title: 贡献经验
     details: 填写问卷，将你的访学经历汇入指南，帮助后来的同学少走弯路。
     link: /contribute/
+  - icon: 🔗
+    title: 资源导航
+    details: 校园门户、教务系统、学术检索、开发工具、AI 效率——常用网址一站汇总。
+    link: /resources/
 ---

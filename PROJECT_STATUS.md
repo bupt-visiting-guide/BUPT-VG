@@ -16,17 +16,17 @@
 
 | 模块 | 状态 | 说明 |
 | --- | --- | --- |
-| VitePress 配置 (`config.mts`) | ✅ 完成 | 导航栏 5 项、侧边栏 3 组、本地搜索、GitHub 链接 |
-| 首页 (`docs/index.md`) | ✅ 完成 | Hero + 4 个 Feature 卡片，含跳转链接 |
+| VitePress 配置 (`config.mts`) | ✅ 完成 | 导航栏 6 项、侧边栏 3 组、本地搜索、GitHub 链接 |
+| 首页 (`docs/index.md`) | ✅ 完成 | Hero + 5 个 Feature 卡片，含跳转链接 |
 | 自定义主题 (`theme/index.ts`) | ✅ 完成 | 扩展默认主题，注册 ExperienceForm、ExperienceWall 组件 |
 | 经验征集表单 (`ExperienceForm.vue`) | ✅ 完成 | 单模式表单（category / content / alias / attachment），FormData POST 到 Netlify Forms，SSR-safe |
 | 经验卡片墙 (`ExperienceWall.vue`) | ✅ 完成 | 客户端异步加载 `experiences.json`，4 行预览 + 原生 `<dialog>` 弹窗详情 + 标签筛选 + 响应式 CSS columns 卡片墙 |
 
-### 2.2 文档内容（11 个页面）
+### 2.2 文档内容（12 个页面）
 
 | 页面 | 状态 | 内容量 |
 | --- | --- | --- |
-| `/` 首页 | ✅ | Hero + 4 Feature 卡片 |
+| `/` 首页 | ✅ | Hero + 5 Feature 卡片 |
 | `/pre-departure/` 行前概览 | ✅ | 章节导读 + 核心提示 + ExperienceWall 卡片墙 |
 | `/pre-departure/registration-and-credits` | ✅ | 跨校报到流程、学分转换前置手续、校园账号激活 |
 | `/pre-departure/packing-checklist` | ✅ | 报到必备文件、电子设备、生活用品 |
@@ -103,7 +103,7 @@
 | LLM 提示词模板 | 1 个（row_extraction.txt） |
 | JSON 数据存储 | 1 个（experiences.json，SSOT） |
 | 内容分类 | 3 个（行前/学业/生活） |
-| 总代码行数（估） | ~1,550 行（含 Python + Vue + TS） |
+| 总代码行数（估） | ~1,800 行（含 Python + Vue + TS + Markdown） |
 
 ---
 
