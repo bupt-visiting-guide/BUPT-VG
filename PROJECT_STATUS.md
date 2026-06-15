@@ -6,7 +6,7 @@
 
 ## 1. 项目概览
 
-基于 VitePress 的静态文档网站，汇聚北邮历届交流访学同学的问卷经验。内容由 CSV 问卷数据 + LLM 提炼自动生成，通过 Netlify 持续部署。
+基于 VitePress 的静态文档网站，汇聚北邮历届交流访学同学的问卷经验。数据以结构化 JSON 为单一数据源（SSOT），LLM 仅用于生成元数据标签，原始文本 100% 保真。前端通过 Vue 组件异步加载 JSON 并渲染为可筛选的经验卡片墙。Netlify 持续部署。
 
 ---
 
@@ -16,28 +16,26 @@
 
 | 模块 | 状态 | 说明 |
 | --- | --- | --- |
-| VitePress 配置 (`config.mts`) | ✅ 完成 | 导航栏 5 项、侧边栏 3 组（含 generated-insights 链接）、本地搜索、GitHub 链接 |
+| VitePress 配置 (`config.mts`) | ✅ 完成 | 导航栏 5 项、侧边栏 3 组、本地搜索、GitHub 链接 |
 | 首页 (`docs/index.md`) | ✅ 完成 | Hero + 4 个 Feature 卡片，含跳转链接 |
-| 自定义主题 (`theme/index.ts`) | ✅ 完成 | 扩展默认主题，注册 ExperienceForm 组件 |
+| 自定义主题 (`theme/index.ts`) | ✅ 完成 | 扩展默认主题，注册 ExperienceForm、ExperienceWall 组件 |
 | 经验征集表单 (`ExperienceForm.vue`) | ✅ 完成 | 双模式表单（结构化提交 / 批量灌入+附件上传），FormData POST 到 Netlify Forms，SSR-safe |
+| 经验卡片墙 (`ExperienceWall.vue`) | ✅ 完成 | 客户端异步加载 `experiences.json`，标签筛选 + 响应式 CSS columns 卡片墙 |
 
-### 2.2 文档内容（14 个页面）
+### 2.2 文档内容（11 个页面）
 
 | 页面 | 状态 | 内容量 |
 | --- | --- | --- |
 | `/` 首页 | ✅ | Hero + 4 Feature 卡片 |
-| `/pre-departure/` 行前概览 | ✅ | 章节导读 + 核心提示 + generated-insights 链接 |
+| `/pre-departure/` 行前概览 | ✅ | 章节导读 + 核心提示 + ExperienceWall 卡片墙 |
 | `/pre-departure/registration-and-credits` | ✅ | 跨校报到流程、学分转换前置手续、校园账号激活 |
 | `/pre-departure/packing-checklist` | ✅ | 报到必备文件、电子设备、生活用品 |
-| `/pre-departure/generated-insights` | ✅ | 侧边栏已链接（暂无 CSV 数据时为占位提示） |
-| `/academics/` 学业概览 | ✅ | 章节导读 + 核心提示 + generated-insights 链接 |
+| `/academics/` 学业概览 | ✅ | 章节导读 + 核心提示 + ExperienceWall 卡片墙 |
 | `/academics/course-selection` | ✅ | 调研方法、课程搭配表、学分转换 |
 | `/academics/lab-and-research` | ✅ | 首月建议、导师沟通表、常见隐患 |
-| `/academics/generated-insights` | ✅ | 侧边栏已链接，由 Netlify Forms 数据驱动 LLM 生成 |
-| `/life-and-mindset/` 生活概览 | ✅ | 章节导读 + 核心提示 + generated-insights 链接 |
+| `/life-and-mindset/` 生活概览 | ✅ | 章节导读 + 核心提示 + ExperienceWall 卡片墙 |
 | `/life-and-mindset/daily-life` | ✅ | 住宿/交通/饮食/社交四维覆盖 |
 | `/life-and-mindset/mental-health` | ✅ | 四阶段模型、三种困境应对、求助指南 |
-| `/life-and-mindset/generated-insights` | ✅ | 侧边栏已链接（暂无 CSV 数据时为占位提示） |
 | `/contribute/` | ✅ | 经验征集表单 + Netlify Forms 提交说明 |
 
 ### 2.3 ETL 数据管道
@@ -45,15 +43,21 @@
 | 模块 | 状态 | 说明 |
 | --- | --- | --- |
 | `extract.py` | ✅ 完成 | CSV 读取、列名别名映射（含 Netlify Forms `content`→`response` 及中文分类→英文 key）、PII 正则脱敏 |
-| `transform.py` | ✅ 完成 | 按分类分组、LLM 调用提炼摘要（含指数退避重试） |
-| `load.py` | ✅ 完成 | Markdown 写入（全量覆盖），日期标注 |
+| `transform.py` | ✅ 完成 | 逐行 LLM 元数据提取（`tags` + `alias`），batch=20，原文不修改；失败自动降级为空元数据 |
+| `load.py` | ✅ 完成 | 增量追加写入 `experiences.json`，按 MD5 id 去重；损坏 JSON 时自动重建 |
 | `run.py` | ✅ 完成 | 三阶段管道入口，错误兜底处理 |
-| `config.py` | ✅ 完成 | 路径、LLM Provider 切换 |
-| `prompts/insight_extraction.txt` | ✅ 完成 | 核心建议/常见困难/综合总结 三段式，含系统占位符忽略指令 |
+| `config.py` | ✅ 完成 | 路径、LLM Provider 切换、`EXPERIENCES_JSON_PATH` 常量 |
+| `prompts/row_extraction.txt` | ✅ 完成 | 逐行提取 `tags`（2-3 词）+ `alias`（可选）JSON 数组输出 |
 | `fetcher.py` | ✅ 完成 | Netlify Forms API 拉取 + 附件下载缓存，返回与 `read_all_csvs()` 同构的行列表 |
 | `parser.py` | ✅ 完成 | 附件文本提取（TXT / 文本型 PDF），永不抛异常；图片/扫描 PDF 返回语义化占位符 |
 
-### 2.4 环境与部署
+### 2.4 数据存储
+
+| 模块 | 状态 | 说明 |
+| --- | --- | --- |
+| `docs/public/data/experiences.json` | ✅ 完成 | 结构化经验数据库（SSOT），每条约含 `id` / `original_text` / `category` / `tags` / `alias` / `source_file`，`meta` 含更新时间与总数 |
+
+### 2.5 环境与部署
 
 | 模块 | 状态 | 说明 |
 | --- | --- | --- |
@@ -61,7 +65,7 @@
 | `netlify.toml` | ✅ 完成 | Node 22 构建环境、静态资源永久缓存 |
 | `.env.example` | ✅ 完成 | 三个 LLM Provider 的 Key 模板 |
 | `.env` | ✅ 完成 | DeepSeek API Key 已配置 |
-| `.gitignore` | ✅ 完成 | 排除 CSV 原始数据、构建产物、.env |
+| `.gitignore` | ✅ 完成 | 排除 CSV 原始数据、构建产物、`.vitepress/cache/`、`.env` |
 | `requirements.txt` | ✅ 完成 | 7 个 Python 依赖（openai/pandas/dotenv/tenacity/jsonschema/pdfplumber/requests） |
 | `README.md` | ✅ 完成 | 13 节完整维护手册，含 Netlify Forms 数据回收流程、故障排查表与上线清单 |
 
@@ -74,16 +78,16 @@
 | 位置 | 状态 | 说明 |
 | --- | --- | --- |
 | `data/raw/` | ⬜ 空目录（仅 .gitkeep） | 需放入问卷 CSV 后运行 ETL 管道；数据来源：历届问卷导出 或 Netlify Forms 导出 |
+| `docs/public/data/experiences.json` | ✅ 已存在 | 当前为空（0 条记录），放入 CSV 运行 ETL 后自动填充 |
 
-> **注意**：generated-insights.md 由 CSV 数据驱动 LLM 生成，放入新 CSV 后运行 `.venv/Scripts/python scripts/etl/run.py`（或 `.venv/bin/python`）即可覆盖更新。
+> **数据更新流程**：放入 CSV → 运行 `.venv/Scripts/python scripts/etl/run.py` → 脚本对每条原文调用 LLM 提取 tags/alias → 追加写入 `experiences.json`（MD5 去重）→ 推送后前端卡片墙自动更新。
 
-### 3.2 未生成的内容
+### 3.2 建议后续增强
 
-| 文件 | 状态 | 触发方式 |
-| --- | --- | --- |
-| `docs/pre-departure/generated-insights.md` | ⬜ 占位文件 | `.venv/Scripts/python scripts/etl/run.py`（需对应分类的 CSV 数据） |
-| `docs/academics/generated-insights.md` | ✅ 已生成 | 由 1 条 Netlify Forms 批量提交数据驱动 LLM 生成 |
-| `docs/life-and-mindset/generated-insights.md` | ⬜ 占位文件 | `.venv/Scripts/python scripts/etl/run.py`（需对应分类的 CSV 数据） |
+| 事项 | 说明 |
+| --- | --- |
+| `ExperienceWall.vue` 错误状态 | fetch 失败时与控制台空数据共用"暂无数据"，建议增加独立错误提示 |
+| 多模态附件处理 | `parser.py` 暂不支持图片/扫描 PDF，参见 README §13.6 Roadmap |
 
 ---
 
@@ -91,13 +95,13 @@
 
 | 维度 | 数量 |
 | --- | --- |
-| 手写文档页面 | 14 个 |
-| LLM 自动生成页面 | 3 个（1 个已生成，2 个占位待数据） |
-| ETL 脚本 | 7 个 Python 文件 |
-| LLM 提示词 | 1 个模板 |
-| 前端组件 | 1 个（ExperienceForm.vue） |
+| 手写文档页面 | 11 个 |
+| Vue 前端组件 | 2 个（ExperienceForm.vue、ExperienceWall.vue） |
+| ETL Python 脚本 | 7 个 |
+| LLM 提示词模板 | 1 个（row_extraction.txt） |
+| JSON 数据存储 | 1 个（experiences.json，SSOT） |
 | 内容分类 | 3 个（行前/学业/生活） |
-| 总代码行数（估） | ~1,100 行（含 Python + Vue + TS） |
+| 总代码行数（估） | ~1,300 行（含 Python + Vue + TS） |
 
 ---
 
@@ -108,7 +112,7 @@
 npm run docs:dev                    # 启动热更新服务器 → http://localhost:5173
 
 # 内容更新（放入 CSV 后）
-.venv/Scripts/python scripts/etl/run.py  # CSV → LLM 提炼 → Markdown
+.venv/Scripts/python scripts/etl/run.py  # CSV → LLM 逐行标签提取 → experiences.json
 npm run docs:dev                         # 本地预览确认
 
 # 部署
@@ -121,59 +125,66 @@ git add docs/ && git commit -m "..." && git push  # 推送自动部署
 
 ## 6. 项目架构图
 
-### 数据采集双通道
+### 数据采集三通道
 
 ```
-┌─ 通道 A：批量导入 ─────────────────────┐
-│                                         │
-│  问卷 CSV → data/raw/*.csv              │
-│                                         │
-└────────────────────┬────────────────────┘
+┌─ 通道 A：批量导入 ─────────────────────────┐
+│  问卷 CSV → data/raw/*.csv                  │
+└────────────────────┬────────────────────────┘
                      │
-┌─ 通道 B：在线征集 ─────────────────────┐
-│                                         │
-│  访问者 → /contribute/ (ExperienceForm) │
-│      │                                  │
-│      │ POST form-name=experience-...    │
-│      ▼                                  │
-│  Netlify Forms 面板 → Export to CSV     │
-│      │                                  │
-│      ▼                                  │
-│  data/raw/netlify-forms.csv             │
-│                                         │
-└────────────────────┬────────────────────┘
+┌─ 通道 B：在线征集 ─────────────────────────┐
+│  访问者 → /contribute/ (ExperienceForm)     │
+│      │                                      │
+│      │ POST form-name=experience-...        │
+│      ▼                                      │
+│  Netlify Forms 面板 → Export to CSV         │
+│      │                                      │
+│      ▼                                      │
+│  data/raw/netlify-forms.csv                 │
+└────────────────────┬────────────────────────┘
                      │
-                     ▼  extract.py（读取 + PII 脱敏 + 字段映射）
+┌─ 通道 C：API 直拉 ─────────────────────────┐
+│  Netlify API ← fetcher.py                   │
+│      │                                      │
+│      ▼  download_attachment()               │
+│  .vitepress/cache/attachments/              │
+│      │                                      │
+│      ▼  parser.py（TXT / PDF 文本提取）      │
+│  rows (同构 list[dict])                     │
+└────────────────────┬────────────────────────┘
                      │
-                     ▼  transform.py（LLM 提炼摘要）
+                     ▼  extract.py（CSV 读取 + PII 脱敏 + 字段映射）
                      │
-                     ▼  load.py（写入 Markdown）
+                     ▼  transform.py（LLM 逐行提取 tags + alias）
                      │
-                     └──▶ docs/{category}/generated-insights.md  （3 个分类的 LLM 总结）
+                     ▼  load.py（追加去重写入 experiences.json）
+                     │
+                     └──▶ docs/public/data/experiences.json
+                               │
+                               ▼  ExperienceWall.vue（客户端 fetch + 筛选卡片墙）
 ```
 
 ### 文件结构
 
 ```
-docs/                        .vitepress/
-  index.md                      config.mts    ← 导航/侧边栏/搜索
-  pre-departure/                theme/
-    index.md (手写)               index.ts     ← 注册 ExperienceForm
-    registration-and-credits.md    components/
-    packing-checklist.md            ExperienceForm.vue ← 经验征集
-    generated-insights.md (LLM)
-  academics/
-    index.md (手写)
+docs/                           .vitepress/
+  index.md                         config.mts     ← 导航/侧边栏/搜索
+  pre-departure/                   theme/
+    index.md (手写 + 组件)           index.ts      ← 注册 ExperienceForm、ExperienceWall
+    registration-and-credits.md      components/
+    packing-checklist.md               ExperienceForm.vue  ← 经验征集
+  academics/                           ExperienceWall.vue   ← 卡片墙
+    index.md (手写 + 组件)
     course-selection.md
     lab-and-research.md
-    generated-insights.md (LLM)
   life-and-mindset/
-    index.md (手写)
+    index.md (手写 + 组件)
     daily-life.md
     mental-health.md
-    generated-insights.md (LLM)
   contribute/
     index.md (手写 + 组件 + Netlify 静态桩)
+  public/data/
+    experiences.json (JSON SSOT，ETL 增量写入)
 ```
 
 ---

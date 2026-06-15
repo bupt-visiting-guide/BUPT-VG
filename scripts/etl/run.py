@@ -3,10 +3,10 @@
 BUPT Visiting Guide — ETL Pipeline
 Usage:  python scripts/etl/run.py
 
-Reads CSVs from data/raw/, calls LLM API (DeepSeek by default),
-writes Markdown summaries to docs/<category>/generated-insights.md.
+Reads CSVs from data/raw/, calls LLM API to tag each response,
+appends enriched rows to docs/public/data/experiences.json.
 
-Set DEEPSEEK_API_KEY (or KIMI_API_KEY) in .env before running.
+Set DEEPSEEK_API_KEY (or KIMI_API_KEY / OPENAI_API_KEY) in .env before running.
 """
 import sys
 from pathlib import Path
@@ -15,8 +15,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from extract import read_all_csvs
-from load import write_category_md
-from transform import transform
+from transform import extract_row_metadata
+from load import write_experiences_json
 
 
 def main() -> None:
@@ -26,14 +26,14 @@ def main() -> None:
     rows = read_all_csvs()
     print(f"      {len(rows)} total responses loaded.\n")
 
-    print("[2/3] Transforming: calling LLM to extract insights…")
-    category_summaries = transform(rows)
-    print(f"      {len(category_summaries)} categories processed.\n")
+    print("[2/3] Transforming: calling LLM to tag each response…")
+    enriched = extract_row_metadata(rows)
+    print(f"      {len(enriched)} rows enriched.\n")
 
-    print("[3/3] Loading: writing Markdown files…")
-    write_category_md(category_summaries)
+    print("[3/3] Loading: appending to experiences.json…")
+    write_experiences_json(enriched)
 
-    print("\nDone. Review generated files, then: git add docs/ && git push")
+    print("\nDone. Review experiences.json, then: git add docs/ && git push")
 
 
 if __name__ == "__main__":

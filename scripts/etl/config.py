@@ -12,12 +12,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RAW_DATA_DIR = PROJECT_ROOT / "data" / "raw"
 DOCS_DIR     = PROJECT_ROOT / "docs"
 
-# Category key → output directory. Keys must match sidebar sections in config.mts.
-CATEGORIES: dict[str, Path] = {
-    "pre-departure":    DOCS_DIR / "pre-departure",
-    "academics":        DOCS_DIR / "academics",
-    "life-and-mindset": DOCS_DIR / "life-and-mindset",
-}
+EXPERIENCES_JSON_PATH = DOCS_DIR / "public" / "data" / "experiences.json"
 
 # ── LLM provider ─────────────────────────────────────────────────────────────
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "deepseek")  # deepseek | kimi | openai

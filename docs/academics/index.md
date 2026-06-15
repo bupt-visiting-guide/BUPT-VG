@@ -18,4 +18,8 @@ description: 访学期间学业规划与科研融入建议
 
 ---
 
-- [问卷洞察](./generated-insights) — 由历届访学问卷数据自动生成的综合建议
+## 经验卡片墙
+
+以下是历届同学提交的原文经验，可按标签筛选：
+
+<ExperienceWall category="academics" />

@@ -1,23 +1,26 @@
 """
-Transform phase:
-  1. Group rows by category.
-  2. For each category, call LLM to extract structured insights (with retry).
+Transform phase — per-row metadata extraction.
+LLM extracts tags + alias only; original_text passes through unchanged.
 """
+import hashlib
+import json
+import logging
+import re
 from pathlib import Path
 
 from openai import OpenAI, APIError, APITimeoutError, RateLimitError
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-from config import (
-    API_KEYS, CATEGORIES, LLM_ENDPOINTS, LLM_PROVIDER,
-)
+from config import API_KEYS, LLM_ENDPOINTS, LLM_PROVIDER
 
-# ── LLM client factory ────────────────────────────────────────────────────────
+logger = logging.getLogger(__name__)
+
+_BATCH_SIZE = 20
+
+
+def _row_id(text: str) -> str:
+    return hashlib.md5(text.encode()).hexdigest()[:12]
+
 
 def _get_client() -> tuple[OpenAI, str]:
     base_url, model = LLM_ENDPOINTS[LLM_PROVIDER]
@@ -29,69 +32,86 @@ def _get_client() -> tuple[OpenAI, str]:
         )
     return OpenAI(api_key=api_key, base_url=base_url), model
 
+
 def _load_prompt(name: str) -> str:
     return (Path(__file__).parent / "prompts" / name).read_text(encoding="utf-8")
 
-# ── Retry-wrapped LLM call ────────────────────────────────────────────────────
 
 @retry(
     retry=retry_if_exception_type((APIError, APITimeoutError, RateLimitError)),
-    wait=wait_exponential(multiplier=1, min=2, max=60),  # 2s → 4s → 8s … ≤ 60s
+    wait=wait_exponential(multiplier=1, min=2, max=60),
     stop=stop_after_attempt(4),
-    reraise=True,  # raise on final failure so run.py can skip this category
+    reraise=True,
 )
-def _call_llm(client: OpenAI, model: str, messages: list[dict], **kwargs) -> str:
-    response = client.chat.completions.create(
-        model=model, messages=messages, **kwargs
-    )
+def _call_llm(client: OpenAI, model: str, messages: list[dict]) -> str:
+    response = client.chat.completions.create(model=model, messages=messages, temperature=0.2)
     return response.choices[0].message.content
 
-# ── Per-category insight extraction ──────────────────────────────────────────
 
-def extract_insights_for_category(category_key: str, responses: list[str]) -> str:
+def _parse_json_array(raw: str) -> list[dict]:
+    """Strip markdown fences and parse JSON array; returns [] on failure."""
+    text = re.sub(r"^```(?:json)?\s*", "", raw.strip(), flags=re.MULTILINE)
+    text = re.sub(r"\s*```$", "", text.strip(), flags=re.MULTILINE)
+    try:
+        result = json.loads(text)
+        return result if isinstance(result, list) else []
+    except json.JSONDecodeError:
+        logger.warning("\033[33m[TRANSFORM-WARN]\033[0m JSON parse failed; skipping batch metadata.")
+        return []
+
+
+def _extract_batch_metadata(batch: list[dict], start_idx: int) -> dict[int, dict]:
+    """Call LLM for one batch; return {global_idx: {tags, alias}} mapping."""
     client, model = _get_client()
-    template = _load_prompt("insight_extraction.txt")
-    combined = "\n---\n".join(responses[:80])  # cap to stay within context limit
-    user_prompt = template.format(category=category_key, responses=combined)
-
-    return _call_llm(
+    template = _load_prompt("row_extraction.txt")
+    lines = []
+    for i, row in enumerate(batch):
+        lines.append(f"[{start_idx + i}]\n{row['response']}")
+    prompt = template.format(
+        start=start_idx,
+        end=start_idx + len(batch) - 1,
+        responses="\n===\n".join(lines),
+    )
+    raw = _call_llm(
         client, model,
         messages=[
-            {"role": "system", "content": "你是一位专业的留学信息整理助手，擅长从学生问卷中提炼有价值的建议。"},
-            {"role": "user",   "content": user_prompt},
+            {"role": "system", "content": "你是一位结构化数据提取专家，只输出要求的 JSON。"},
+            {"role": "user",   "content": prompt},
         ],
-        temperature=0.3,
     )
+    result: dict[int, dict] = {}
+    for item in _parse_json_array(raw):
+        idx = item.get("idx")
+        if isinstance(idx, int):
+            result[idx] = {"tags": item.get("tags", []), "alias": item.get("alias")}
+    return result
 
-# ── Orchestrator ──────────────────────────────────────────────────────────────
 
-def transform(rows: list[dict]) -> dict[str, str]:
-    """Returns category_summaries: {category_key: markdown_string}"""
-    by_category: dict[str, list[str]] = {k: [] for k in CATEGORIES}
-    uncategorized: list[str] = []
+def extract_row_metadata(rows: list[dict]) -> list[dict]:
+    """Enrich each row with id, tags, alias. original_text is unchanged."""
+    enriched: list[dict] = []
+    total = len(rows)
 
-    for row in rows:
-        cat  = str(row.get("category", "")).strip()
-        text = str(row.get("response", "")).strip()
-        if not text:
-            continue
-        if cat in by_category:
-            by_category[cat].append(text)
-        else:
-            uncategorized.append(text)
-
-    if uncategorized:
-        print(f"[INFO] {len(uncategorized)} rows had unrecognized category; skipped.")
-
-    category_summaries: dict[str, str] = {}
-    for cat_key, responses in by_category.items():
-        if not responses:
-            print(f"[INFO] No responses for '{cat_key}', skipping LLM call.")
-            continue
-        print(f"[TRANSFORM] Extracting insights for '{cat_key}' ({len(responses)} responses)…")
+    for batch_start in range(0, total, _BATCH_SIZE):
+        batch = rows[batch_start : batch_start + _BATCH_SIZE]
+        print(f"[TRANSFORM] Batch {batch_start + 1}–{batch_start + len(batch)} / {total}…")
         try:
-            category_summaries[cat_key] = extract_insights_for_category(cat_key, responses)
+            meta_map = _extract_batch_metadata(batch, batch_start)
         except Exception as exc:
-            print(f"[ERROR] '{cat_key}' failed after retries: {exc}. Skipping.")
+            print(f"[TRANSFORM] Batch failed: {exc}; empty metadata used.")
+            meta_map = {}
 
-    return category_summaries
+        for j, row in enumerate(batch):
+            meta = meta_map.get(batch_start + j, {})
+            text = str(row.get("response", "")).strip()
+            enriched.append({
+                "id":            _row_id(text),
+                "original_text": text,
+                "category":      str(row.get("category", "")).strip(),
+                "tags":          meta.get("tags") or [],
+                "alias":         meta.get("alias"),
+                "source_file":   str(row.get("source_file", "")),
+            })
+
+    print(f"[TRANSFORM] Enriched {len(enriched)} rows.")
+    return enriched

@@ -1,31 +1,44 @@
 """
-Load phase: write Markdown summaries to the docs tree.
+Load phase — append-merge enriched rows to experiences.json.
 """
+import json
 from datetime import date
 from pathlib import Path
 
-from config import CATEGORIES
+from config import EXPERIENCES_JSON_PATH
 
-_FRONTMATTER = """\
----
-title: {title}
-description: 由问卷数据自动生成，最后更新：{date}
----
 
-"""
+def write_experiences_json(enriched_rows: list[dict]) -> None:
+    """Append new rows to experiences.json, deduplicating by id."""
+    existing: list[dict] = []
+    existing_ids: set[str] = set()
 
-# ── Writers ───────────────────────────────────────────────────────────────────
+    if EXPERIENCES_JSON_PATH.exists():
+        try:
+            data = json.loads(EXPERIENCES_JSON_PATH.read_text(encoding="utf-8"))
+            existing = data.get("experiences", [])
+            existing_ids = {e["id"] for e in existing}
+        except Exception:
+            print("[LOAD] Warning: could not parse existing experiences.json; starting fresh.")
 
-def write_category_md(category_summaries: dict[str, str]) -> None:
-    """Write LLM summaries to generated-insights.md (never overwrites index.md)."""
-    for cat_key, content in category_summaries.items():
-        out_dir: Path = CATEGORIES[cat_key]
-        out_dir.mkdir(parents=True, exist_ok=True)
+    new_count = 0
+    for row in enriched_rows:
+        if row["id"] not in existing_ids:
+            existing.append(row)
+            existing_ids.add(row["id"])
+            new_count += 1
 
-        out_file = out_dir / "generated-insights.md"
-        frontmatter = _FRONTMATTER.format(
-            title=f"{cat_key} — 问卷洞察",
-            date=date.today().isoformat(),
-        )
-        out_file.write_text(frontmatter + content, encoding="utf-8")
-        print(f"[LOAD] Wrote {out_file.relative_to(Path.cwd())}")
+    payload = {
+        "experiences": existing,
+        "meta": {
+            "last_updated": date.today().isoformat(),
+            "total":        len(existing),
+        },
+    }
+
+    EXPERIENCES_JSON_PATH.parent.mkdir(parents=True, exist_ok=True)
+    EXPERIENCES_JSON_PATH.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    print(f"[LOAD] +{new_count} new entries. Total: {payload['meta']['total']} → {EXPERIENCES_JSON_PATH}")

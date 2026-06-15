@@ -1,6 +1,6 @@
 # BUPT 访学指南 — 维护手册
 
-基于 [VitePress](https://vitepress.dev) 的静态文档网站，汇聚北邮历届交流访学同学的问卷经验。内容由 CSV 问卷数据 + LLM 提炼自动生成，通过 Netlify 持续部署。
+基于 [VitePress](https://vitepress.dev) 的静态文档网站，汇聚北邮历届交流访学同学的问卷经验。数据以结构化 JSON 为单一数据源（SSOT），LLM 仅生成标签元数据、原始文本 100% 保真；前端通过 Vue 组件异步渲染为可筛选的经验卡片墙。Netlify 持续部署。
 
 **内容更新只需三步**：换 CSV → 跑脚本 → 推代码。
 
@@ -51,53 +51,56 @@ bupt-visiting-guide/
 │
 ├── docs/                         # 网站内容根目录
 │   ├── index.md                  # 首页（Hero + Feature 卡片）
-│
 │   ├── pre-departure/
-│   │   ├── index.md              # 手写概览
-│   │   ├── generated-insights.md # LLM 提炼摘要（自动覆盖）
+│   │   ├── index.md              # 手写概览 + ExperienceWall 组件
 │   │   ├── registration-and-credits.md
 │   │   └── packing-checklist.md
 │   ├── academics/
-│   │   ├── index.md
-│   │   ├── generated-insights.md
+│   │   ├── index.md              # 手写概览 + ExperienceWall 组件
 │   │   ├── course-selection.md
 │   │   └── lab-and-research.md
 │   ├── life-and-mindset/
-│   │   ├── index.md
-│   │   ├── generated-insights.md
+│   │   ├── index.md              # 手写概览 + ExperienceWall 组件
 │   │   ├── daily-life.md
 │   │   └── mental-health.md
-│   └── contribute/
-│       └── index.md              # 经验征集页（Netlify Forms + 静态桩）
+│   ├── contribute/
+│   │   └── index.md              # 经验征集页（Netlify Forms + 静态桩）
+│   └── public/data/
+│       └── experiences.json      # 经验数据库（SSOT，ETL 增量写入）
 │
 ├── scripts/etl/                  # Python ETL 管道
 │   ├── run.py                    # 入口脚本
 │   ├── config.py                 # 路径、LLM provider 配置
 │   ├── extract.py                # CSV 读取 + PII 脱敏
-│   ├── transform.py              # LLM 调用提炼摘要
-│   ├── load.py                   # 写入 Markdown 文件
+│   ├── transform.py              # LLM 逐行标签提取（tags + alias）
+│   ├── load.py                   # 增量追加写入 experiences.json
+│   ├── fetcher.py                # Netlify Forms API 拉取 + 附件下载
+│   ├── parser.py                 # 附件文本提取（TXT / PDF）
 │   ├── requirements.txt
 │   └── prompts/
-│       └── insight_extraction.txt  # 摘要提炼提示词
+│       └── row_extraction.txt    # 逐行标签提取提示词
 │
 └── .vitepress/
     ├── config.mts                # 导航、侧边栏、搜索配置
     └── theme/
-        ├── index.ts              # 注册 ExperienceForm 组件
+        ├── index.ts              # 注册 ExperienceForm、ExperienceWall 组件
         └── components/
-            └── ExperienceForm.vue # Netlify Forms 经验征集表单
+            ├── ExperienceForm.vue  # Netlify Forms 经验征集表单
+            └── ExperienceWall.vue  # 经验卡片墙（异步加载 + 标签筛选）
 ```
 
 ### 文件生成关系
 
 ```
-data/raw/*.csv
+data/raw/*.csv  (or Netlify API via fetcher.py)
     │
     ▼  extract.py（读取 + 脱敏）
     │
-    ▼  transform.py（LLM 提炼摘要）
+    ▼  transform.py（LLM 逐行提取 tags + alias，原文不改）
     │
-    └──▶ docs/{category}/generated-insights.md   （各分类摘要页）
+    └──▶ docs/public/data/experiences.json  （增量追加 + MD5 去重）
+              │
+              ▼  ExperienceWall.vue（客户端 fetch + 标签筛选卡片墙）
 ```
 
 ---
@@ -203,8 +206,8 @@ CSV 必须包含以下列（列名可为中文或英文）：
 脚本会自动完成以下操作：
 
 1. **Extract** — 读取所有 CSV，脱敏个人信息（学号、手机号、邮箱），汇总为结构化列表
-2. **Transform** — 按分类分组，调用 LLM 提炼摘要建议
-3. **Load** — 写入 `docs/{category}/generated-insights.md`
+2. **Transform** — 逐行调用 LLM 提取 `tags`（2-3 个关键词）与 `alias`（可选），原文 `original_text` 不做任何修改
+3. **Load** — 追加写入 `docs/public/data/experiences.json`，基于 MD5 文本哈希去重
 
 ### 步骤三：本地预览 & 推送
 
@@ -226,9 +229,9 @@ git push
 
 | 文件 | 编辑方式 | 说明 |
 | --- | --- | --- |
-| `docs/{category}/index.md` | 手动编辑 | 手写概览页，脚本**不会**覆盖 |
-| `docs/{category}/generated-insights.md` | 通过脚本生成 | 每次跑 ETL 会覆盖 |
+| `docs/{category}/index.md` | 手动编辑 | 手写概览页 + `<ExperienceWall category="..." />` 组件；脚本**不会**覆盖 |
 | `docs/{category}/*.md`（其他子页面） | 手动编辑 | 如 `registration-and-credits.md`、`daily-life.md` 等 |
+| `docs/public/data/experiences.json` | 通过脚本生成 | 前端经验卡片墙的数据源（SSOT），增量追加 |
 | `docs/index.md` | 手动编辑 | 首页 Hero + Feature 布局 |
 | `docs/contribute/index.md` | 手动编辑 | 经验征集页（含 Netlify Forms 静态桩，字段名需与 ExperienceForm.vue 一致） |
 
@@ -242,8 +245,8 @@ git push
 ┌──────────┐     ┌──────────────┐     ┌──────────────┐
 │ Extract  │ ──▶ │  Transform   │ ──▶ │    Load      │
 │          │     │              │     │              │
-│ CSV→rows │     │ LLM→summary  │     │   .md 文件   │
-│ PII 脱敏 │     │              │     │              │
+│ CSV→rows │     │ LLM→tags     │     │ JSON 追加    │
+│ PII 脱敏 │     │ +alias       │     │ MD5 去重     │
 └──────────┘     └──────────────┘     └──────────────┘
 ```
 
@@ -302,7 +305,7 @@ https://github.com/bupt-visiting-guide/BUPT-VG
 3. 确认最新 deploy 状态为 **Published**（绿色）
 4. 访问网站 URL，检查以下页面是否正常：
    - 首页和各分类页内容是否最新
-   - 各分类的 `generated-insights` 是否显示了新数据并通过侧边栏可访问
+   - 各分类概览页的 ExperienceWall 卡片墙是否正常加载并显示新数据
 
 ---
 
@@ -321,19 +324,16 @@ https://github.com/bupt-visiting-guide/BUPT-VG
 
 ## 11. 进阶：修改 LLM 提示词
 
-编辑 `scripts/etl/prompts/insight_extraction.txt`，然后重新运行 `.venv/Scripts/python scripts/etl/run.py`。
+编辑 `scripts/etl/prompts/row_extraction.txt`，然后重新运行 `.venv/Scripts/python scripts/etl/run.py`。
 
-该文件控制各分类摘要的输出格式（核心建议、常见困难、综合总结）。修改提示词后建议先在单个分类上验证效果，再全量运行。
+该文件控制 LLM 从每条原文中提取的 `tags`（2-3 个关键词）和 `alias`（可选身份信息）的格式。修改提示词后建议先在少量 CSV 上验证效果，再全量运行。
 
 ---
 
 ## 12. 进阶：增加新的分类页面
 
 1. 在 `docs/` 下新建目录，例如 `docs/career/`，并创建 `index.md`
-2. 在 `scripts/etl/config.py` 的 `CATEGORIES` 字典中添加：
-   ```python
-   "career": DOCS_DIR / "career",
-   ```
+2. 在 Category 概览页中嵌入 `<ExperienceWall category="career" />` 组件
 3. 在 `.vitepress/config.mts` 的 `nav` 和 `sidebar` 中添加对应条目
 4. 重新运行 ETL 脚本并验证
 
@@ -388,7 +388,7 @@ git push
                  │              │
                  │              │  Export to CSV
                  │              ▼
-                 │         data/raw/  ──▶ ETL 管道 ──▶ generated-insights.md
+                 │         data/raw/  ──▶ ETL 管道 ──▶ experiences.json
                  ▼
           上线前检查清单内联状态提示
 ```
@@ -521,7 +521,7 @@ pip install pdfplumber
 - [ ] `data/raw/` 中有至少一个 CSV 文件
 - [ ] `.venv/Scripts/python scripts/etl/run.py` 成功完成（macOS/Linux 使用 `.venv/bin/python`）
 - [ ] `npm run docs:dev` 本地预览无异常
-- [ ] 三个分类的 `generated-insights` 页面通过侧边栏可访问
+- [ ] 三个分类概览页的 ExperienceWall 卡片墙正常渲染
 - [ ] 各页面 GitHub 编辑链接指向正确的仓库路径
 
 ---
