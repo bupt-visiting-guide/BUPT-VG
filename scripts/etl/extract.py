@@ -157,6 +157,16 @@ def read_all_csvs() -> list[dict]:
                 print(f"[EXTRACT] Keyword-classified category for {n_rescued} row(s).")
         # Anonymize in place before any downstream processing
         df["response"] = df["response"].fillna("").astype(str).apply(anonymize)
+        # Drop rows whose response is a parser placeholder (parse failures that
+        # returned e.g. [DOCX_UNSUPPORTED] or [FILE_CORRUPTED]).
+        _PLACEHOLDER_RE = re.compile(r"^\[[A-Z]+_(?:UNSUPPORTED|CORRUPTED)")
+        def _is_placeholder(s: str) -> bool:
+            return bool(_PLACEHOLDER_RE.match(str(s).strip()))
+        placeholder_mask = df["response"].apply(_is_placeholder)
+        if placeholder_mask.any():
+            print(f"[EXTRACT] Dropped {placeholder_mask.sum()} placeholder row(s) from {csv_path.name}.")
+            df = df[~placeholder_mask]
+
         # Drop rows with no usable content (bot submissions, empty uploads, etc.)
         before = len(df)
         df = df[df["response"].str.strip().ne("")]

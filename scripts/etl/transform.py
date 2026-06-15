@@ -114,7 +114,7 @@ def extract_row_metadata(rows: list[dict]) -> list[dict]:
             meta = meta_map.get(batch_start + j, {})
             text = str(row.get("response", "")).strip()
             tags = meta.get("tags") or []
-            category = str(row.get("category", "")).strip()
+            category = _clean_str(row.get("category")) or ""
             if category not in _VALID_CATS:
                 tags_text = " ".join([str(t) for t in tags])
                 if tags_text:
