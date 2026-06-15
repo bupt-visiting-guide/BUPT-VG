@@ -65,6 +65,8 @@ bupt-visiting-guide/
 │   │   └── mental-health.md
 │   ├── contribute/
 │   │   └── index.md              # 经验征集页（Netlify Forms + 静态桩）
+│   ├── resources/
+│   │   └── index.md              # 资源导航页（校园/学习/开发/检索常用链接）
 │   └── public/data/
 │       └── experiences.json      # 经验数据库（SSOT，ETL 增量写入）
 │
@@ -234,6 +236,7 @@ git push
 | `docs/public/data/experiences.json` | 通过脚本生成 | 前端经验卡片墙的数据源（SSOT），增量追加 |
 | `docs/index.md` | 手动编辑 | 首页 Hero + Feature 布局 |
 | `docs/contribute/index.md` | 手动编辑 | 经验征集页（含 Netlify Forms 静态桩，字段名需与 ExperienceForm.vue 一致） |
+| `docs/resources/index.md` | 手动编辑 | 资源导航页（校园/学习/开发/检索常用链接） |
 
 ---
 

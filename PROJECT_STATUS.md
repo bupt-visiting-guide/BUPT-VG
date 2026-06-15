@@ -37,6 +37,7 @@
 | `/life-and-mindset/daily-life` | ✅ | 住宿/交通/饮食/社交四维覆盖 |
 | `/life-and-mindset/mental-health` | ✅ | 四阶段模型、三种困境应对、求助指南 |
 | `/contribute/` | ✅ | 经验征集表单 + Netlify Forms 提交说明 |
+| `/resources/` | ✅ | 10 类资源导航（校园门户、教务、学术、网络、社区、就业、开发、检索、AI、工具） |
 
 ### 2.3 ETL 数据管道
 
@@ -96,7 +97,7 @@
 
 | 维度 | 数量 |
 | --- | --- |
-| 手写文档页面 | 11 个 |
+| 手写文档页面 | 12 个 |
 | Vue 前端组件 | 2 个（ExperienceForm.vue、ExperienceWall.vue） |
 | ETL Python 脚本 | 7 个 |
 | LLM 提示词模板 | 1 个（row_extraction.txt） |
@@ -186,6 +187,8 @@ docs/                           .vitepress/
     mental-health.md
   contribute/
     index.md (手写 + 组件 + Netlify 静态桩)
+  resources/
+    index.md (手写资源导航：校园/学习/开发/检索常用链接)
   public/data/
     experiences.json (JSON SSOT，ETL 增量写入)
 ```
