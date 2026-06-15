@@ -88,6 +88,8 @@ def fetch_and_parse_submissions(form_id: str, token: str) -> list[dict]:
     the temporary downloaded files.
     """
     from parser import parse_bytes
+    from extract import CATEGORY_LABEL_MAP, classify_category
+    _VALID_CATS = set(CATEGORY_LABEL_MAP.values())
 
     submissions = fetch_submissions(form_id, token)
     rows: list[dict] = []
@@ -114,10 +116,14 @@ def fetch_and_parse_submissions(form_id: str, token: str) -> list[dict]:
 
         combined = "\n".join(text_parts).strip()
         if combined:
+            raw_cat = str(data.get("category", "")).strip()
+            cat = CATEGORY_LABEL_MAP.get(raw_cat, raw_cat)
+            if cat not in _VALID_CATS:
+                cat = classify_category(combined) or ""
             rows.append({
-                "response": combined,
-                "category": str(data.get("category", "")).strip(),
-                "alias":    str(data.get("alias") or "").strip() or None,
+                "response":    combined,
+                "category":    cat,
+                "alias":       str(data.get("alias") or "").strip() or None,
                 "source_file": f"netlify:{sub_id}",
             })
 

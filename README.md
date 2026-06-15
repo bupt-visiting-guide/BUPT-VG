@@ -353,7 +353,7 @@ Netlify 原生支持将收集到的表单数据一键导出为 CSV：
 
 ### 13.2 无缝对接 ETL 管道
 
-导出的 CSV 字段名与前台表单一致（`category`、`content`、`major`）。管道已在 Extract 阶段内置了以下自动转换，维护者无需手动预处理：
+导出的 CSV 字段名与前台表单一致（`category`、`content`、`alias`，以及可选的 `attachment` 附件 URL）。管道已在 Extract 阶段内置了以下自动转换，维护者无需手动预处理：
 
 - **`content` → `response`** 列名映射（`COLUMN_ALIASES`）
 - **中文分类 → 英文 key** 的自动转换（`CATEGORY_LABEL_MAP`：行前准备 → `pre-departure` 等）
@@ -395,7 +395,7 @@ git push
 
 ### 13.4 文件附件在 Netlify 中的导出形态
 
-表单支持两种录入模式（自 2026-06 起）：结构化提交（category / content / major）和历史数据灌入（raw_content + attachment 文件）。
+表单支持两种录入模式（自 2026-06 起）：结构化提交（category / content / alias / attachment）和历史数据灌入（raw_content + attachment 文件，用于批量导入过往经验）。
 
 当提交包含文件附件时，Netlify **不会**将文件内嵌到 CSV 导出中，而是以**可下载 URL** 的形式呈现。在 Netlify 控制台的 **Forms → Submissions** JSON 视图中，`attachment` 字段的值类似于：
 

@@ -89,6 +89,8 @@ def _extract_batch_metadata(batch: list[dict], start_idx: int) -> dict[int, dict
 
 def extract_row_metadata(rows: list[dict]) -> list[dict]:
     """Enrich each row with id, tags, major. original_text is unchanged."""
+    from extract import classify_category
+    _VALID_CATS = {"pre-departure", "academics", "life-and-mindset"}
     enriched: list[dict] = []
     total = len(rows)
 
@@ -104,11 +106,17 @@ def extract_row_metadata(rows: list[dict]) -> list[dict]:
         for j, row in enumerate(batch):
             meta = meta_map.get(batch_start + j, {})
             text = str(row.get("response", "")).strip()
+            tags = meta.get("tags") or []
+            category = str(row.get("category", "")).strip()
+            if category not in _VALID_CATS:
+                tags_text = " ".join([str(t) for t in tags])
+                if tags_text:
+                    category = classify_category(tags_text) or category
             enriched.append({
                 "id":            _row_id(text),
                 "original_text": text,
-                "category":      str(row.get("category", "")).strip(),
-                "tags":          meta.get("tags") or [],
+                "category":      category,
+                "tags":          tags,
                 "alias":         str(row.get("alias") or "").strip() or None,
                 "major":         meta.get("major"),
                 "source_file":   str(row.get("source_file", "")),

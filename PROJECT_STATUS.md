@@ -43,12 +43,12 @@
 | 模块 | 状态 | 说明 |
 | --- | --- | --- |
 | `extract.py` | ✅ 完成 | CSV 读取、列名别名映射（含 Netlify Forms `content`→`response` 及中文分类→英文 key）、PII 正则脱敏 |
-| `transform.py` | ✅ 完成 | 逐行 LLM 元数据提取（`tags` + `major`），batch=20，原文不修改；失败自动降级为空元数据 |
+| `transform.py` | ✅ 完成 | 逐行 LLM 元数据提取（`tags` + `major`），batch=20，原文不修改；失败自动降级为空元数据；category 缺失时通过 tags 关键词匹配自动补全 |
 | `load.py` | ✅ 完成 | 增量追加写入 `experiences.json`，按 MD5 id 去重；损坏 JSON 时自动重建 |
 | `run.py` | ✅ 完成 | 三阶段管道入口，错误兜底处理 |
 | `config.py` | ✅ 完成 | 路径、LLM Provider 切换、`EXPERIENCES_JSON_PATH` 常量 |
 | `prompts/row_extraction.txt` | ✅ 完成 | 逐行提取 `tags`（2-3 词）+ `major`（仅专业背景，禁止提取姓名）JSON 数组输出 |
-| `fetcher.py` | ✅ 完成 | Netlify Forms API 拉取 + 附件下载缓存，返回与 `read_all_csvs()` 同构的行列表 |
+| `fetcher.py` | ✅ 完成 | Netlify Forms API 拉取 + 附件下载缓存 + 关键词自动分类，返回与 `read_all_csvs()` 同构的行列表 |
 | `parser.py` | ✅ 完成 | 附件文本提取（TXT / 文本型 PDF），永不抛异常；图片/扫描 PDF 返回语义化占位符 |
 
 ### 2.4 数据存储

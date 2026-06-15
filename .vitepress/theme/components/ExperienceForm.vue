@@ -56,7 +56,7 @@ async function handleSubmit() {
     @submit.prevent="handleSubmit"
   >
     <div class="ef-field">
-      <label for="ef-category">经验分类（选填，若不确定具体分类可留空，系统会自动归档）</label>
+      <label for="ef-category">经验分类（选填）</label>
       <select id="ef-category" v-model="category" name="category">
         <option value="">请选择分类</option>
         <option value="行前准备">行前准备</option>
