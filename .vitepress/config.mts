@@ -14,7 +14,6 @@ export default defineConfig({
       { text: '行前准备', link: '/pre-departure/' },
       { text: '学业与科研', link: '/academics/' },
       { text: '生活与心态', link: '/life-and-mindset/' },
-      { text: '关键词图谱', link: '/insights/keyword-overview' },
       { text: '贡献经验', link: '/contribute/' },
     ],
 
@@ -26,6 +25,7 @@ export default defineConfig({
             { text: '概览', link: '/pre-departure/' },
             { text: '报到与手续', link: '/pre-departure/registration-and-credits' },
             { text: '行李清单', link: '/pre-departure/packing-checklist' },
+            { text: '问卷洞察', link: '/pre-departure/generated-insights' },
           ],
         },
       ],
@@ -36,6 +36,7 @@ export default defineConfig({
             { text: '概览', link: '/academics/' },
             { text: '选课策略', link: '/academics/course-selection' },
             { text: '实验室与科研', link: '/academics/lab-and-research' },
+            { text: '问卷洞察', link: '/academics/generated-insights' },
           ],
         },
       ],
@@ -46,14 +47,7 @@ export default defineConfig({
             { text: '概览', link: '/life-and-mindset/' },
             { text: '日常生活', link: '/life-and-mindset/daily-life' },
             { text: '心态调整', link: '/life-and-mindset/mental-health' },
-          ],
-        },
-      ],
-      '/insights/': [
-        {
-          text: '综合洞察',
-          items: [
-            { text: '关键词图谱', link: '/insights/keyword-overview' },
+            { text: '问卷洞察', link: '/life-and-mindset/generated-insights' },
           ],
         },
       ],

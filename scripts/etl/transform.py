@@ -2,11 +2,7 @@
 Transform phase:
   1. Group rows by category.
   2. For each category, call LLM to extract structured insights (with retry).
-  3. Count keyword frequencies across all responses.
 """
-import json
-import re
-from collections import Counter
 from pathlib import Path
 
 from openai import OpenAI, APIError, APITimeoutError, RateLimitError
@@ -18,7 +14,7 @@ from tenacity import (
 )
 
 from config import (
-    API_KEYS, CATEGORIES, LLM_ENDPOINTS, LLM_PROVIDER, SEED_KEYWORDS,
+    API_KEYS, CATEGORIES, LLM_ENDPOINTS, LLM_PROVIDER,
 )
 
 # ── LLM client factory ────────────────────────────────────────────────────────
@@ -67,51 +63,10 @@ def extract_insights_for_category(category_key: str, responses: list[str]) -> st
         temperature=0.3,
     )
 
-# ── Keyword frequency counting ────────────────────────────────────────────────
-
-def count_keywords(all_responses: list[str]) -> dict[str, int]:
-    full_corpus = " ".join(all_responses)
-
-    counter: Counter = Counter()
-    for kw in SEED_KEYWORDS:
-        counter[kw] = full_corpus.count(kw)
-
-    # LLM-assisted keyword discovery
-    try:
-        client, model = _get_client()
-        template = _load_prompt("keyword_extraction.txt")
-        user_prompt = template.format(responses=full_corpus[:8000])
-
-        raw = _call_llm(
-            client, model,
-            messages=[
-                {"role": "system", "content": "你是关键词提取助手，只输出JSON数组，不解释。"},
-                {"role": "user",   "content": user_prompt},
-            ],
-            temperature=0.0,
-        )
-        match = re.search(r'\[.*?\]', raw, re.DOTALL)
-        if match:
-            for kw in json.loads(match.group()):
-                if kw not in counter:
-                    counter[kw] = full_corpus.count(kw)
-    except Exception as exc:
-        print(f"[WARN] Keyword LLM call failed, using seed list only: {exc}")
-
-    return dict(sorted(
-        {k: v for k, v in counter.items() if v > 0}.items(),
-        key=lambda x: x[1],
-        reverse=True,
-    ))
-
 # ── Orchestrator ──────────────────────────────────────────────────────────────
 
-def transform(rows: list[dict]) -> tuple[dict[str, str], dict[str, int]]:
-    """
-    Returns:
-        category_summaries: {category_key: markdown_string}
-        keyword_counts:     {keyword: count}
-    """
+def transform(rows: list[dict]) -> dict[str, str]:
+    """Returns category_summaries: {category_key: markdown_string}"""
     by_category: dict[str, list[str]] = {k: [] for k in CATEGORIES}
     uncategorized: list[str] = []
 
@@ -139,7 +94,4 @@ def transform(rows: list[dict]) -> tuple[dict[str, str], dict[str, int]]:
         except Exception as exc:
             print(f"[ERROR] '{cat_key}' failed after retries: {exc}. Skipping.")
 
-    all_texts = [str(r.get("response", "")) for r in rows if r.get("response")]
-    keyword_counts = count_keywords(all_texts)
-
-    return category_summaries, keyword_counts
+    return category_summaries

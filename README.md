@@ -29,7 +29,6 @@
 | 层级 | 技术 | 用途 |
 | --- | --- | --- |
 | 文档框架 | VitePress 1.6 + Vue 3.5 | 静态站点生成、主题、搜索 |
-| 词云可视化 | ECharts 5.5 + echarts-wordcloud 2.1 | `/insights/keyword-overview` 页面的交互式词云 |
 | ETL 脚本 | Python 3 + pandas | 读取 CSV、脱敏、调用 LLM、写入 Markdown |
 | LLM | DeepSeek（默认）/ Kimi / OpenAI | 提炼问卷摘要、发现关键词 |
 | 部署 | Netlify | 自动构建，push 即部署 |
@@ -43,7 +42,7 @@ bupt-visiting-guide/
 ├── .env.example                  # API Key 配置模板
 ├── .env                          # 本地 API Key（gitignore）
 ├── .gitignore
-├── package.json                  # Node 依赖（VitePress, ECharts…）
+├── package.json                  # Node 依赖（VitePress, Vue）
 ├── netlify.toml                  # Netlify 构建与缓存规则
 │
 ├── data/
@@ -52,7 +51,7 @@ bupt-visiting-guide/
 │
 ├── docs/                         # 网站内容根目录
 │   ├── index.md                  # 首页（Hero + Feature 卡片）
-│   ├── public/data/keywords.json # 词云数据（ETL 自动生成）
+│
 │   ├── pre-departure/
 │   │   ├── index.md              # 手写概览
 │   │   ├── generated-insights.md # LLM 提炼摘要（自动覆盖）
@@ -68,28 +67,24 @@ bupt-visiting-guide/
 │   │   ├── generated-insights.md
 │   │   ├── daily-life.md
 │   │   └── mental-health.md
-│   ├── contribute/
-│   │   └── index.md              # 经验征集页（Netlify Forms + 静态桩）
-│   └── insights/
-│       └── keyword-overview.md   # 手写骨架 + KeywordBubble 组件
+│   └── contribute/
+│       └── index.md              # 经验征集页（Netlify Forms + 静态桩）
 │
 ├── scripts/etl/                  # Python ETL 管道
 │   ├── run.py                    # 入口脚本
-│   ├── config.py                 # 路径、LLM provider、种子关键词
+│   ├── config.py                 # 路径、LLM provider 配置
 │   ├── extract.py                # CSV 读取 + PII 脱敏
-│   ├── transform.py              # LLM 调用 + 关键词计数
-│   ├── load.py                   # 写入 Markdown + JSON Schema 校验
+│   ├── transform.py              # LLM 调用提炼摘要
+│   ├── load.py                   # 写入 Markdown 文件
 │   ├── requirements.txt
 │   └── prompts/
-│       ├── insight_extraction.txt  # 摘要提炼提示词
-│       └── keyword_extraction.txt  # 关键词发现提示词
+│       └── insight_extraction.txt  # 摘要提炼提示词
 │
 └── .vitepress/
     ├── config.mts                # 导航、侧边栏、搜索配置
     └── theme/
-        ├── index.ts              # 注册 KeywordBubble、ExperienceForm 组件
+        ├── index.ts              # 注册 ExperienceForm 组件
         └── components/
-            ├── KeywordBubble.vue  # ECharts 词云组件
             └── ExperienceForm.vue # Netlify Forms 经验征集表单
 ```
 
@@ -100,12 +95,9 @@ data/raw/*.csv
     │
     ▼  extract.py（读取 + 脱敏）
     │
-    ▼  transform.py（LLM 提炼 + 关键词统计）
+    ▼  transform.py（LLM 提炼摘要）
     │
-    ├──▶ docs/{category}/generated-insights.md   （各分类摘要页）
-    └──▶ docs/public/data/keywords.json           （词云数据）
-              │
-              ▼  KeywordBubble.vue（前端渲染）
+    └──▶ docs/{category}/generated-insights.md   （各分类摘要页）
 ```
 
 ---
@@ -211,8 +203,8 @@ CSV 必须包含以下列（列名可为中文或英文）：
 脚本会自动完成以下操作：
 
 1. **Extract** — 读取所有 CSV，脱敏个人信息（学号、手机号、邮箱），汇总为结构化列表
-2. **Transform** — 按分类分组，调用 LLM 提炼摘要建议；统计全量文本中的关键词频次
-3. **Load** — 写入 `docs/{category}/generated-insights.md` 和 `docs/public/data/keywords.json`（写入前经过 JSON Schema 校验）
+2. **Transform** — 按分类分组，调用 LLM 提炼摘要建议
+3. **Load** — 写入 `docs/{category}/generated-insights.md`
 
 ### 步骤三：本地预览 & 推送
 
@@ -237,9 +229,8 @@ git push
 | `docs/{category}/index.md` | 手动编辑 | 手写概览页，脚本**不会**覆盖 |
 | `docs/{category}/generated-insights.md` | 通过脚本生成 | 每次跑 ETL 会覆盖 |
 | `docs/{category}/*.md`（其他子页面） | 手动编辑 | 如 `registration-and-credits.md`、`daily-life.md` 等 |
-| `docs/insights/keyword-overview.md` | 手动编辑 | 手写说明文字，词云图由 `<KeywordBubble />` 组件渲染 |
-| `docs/public/data/keywords.json` | 通过脚本生成 | 前端词云的数据源 |
 | `docs/index.md` | 手动编辑 | 首页 Hero + Feature 布局 |
+| `docs/contribute/index.md` | 手动编辑 | 经验征集页（含 Netlify Forms 静态桩，字段名需与 ExperienceForm.vue 一致） |
 
 ---
 
@@ -251,20 +242,10 @@ git push
 ┌──────────┐     ┌──────────────┐     ┌──────────────┐
 │ Extract  │ ──▶ │  Transform   │ ──▶ │    Load      │
 │          │     │              │     │              │
-│ CSV→rows │     │ LLM→summary  │     │ .md + .json  │
-│ PII 脱敏 │     │ seed+LLM→kw  │     │ schema 校验   │
+│ CSV→rows │     │ LLM→summary  │     │   .md 文件   │
+│ PII 脱敏 │     │              │     │              │
 └──────────┘     └──────────────┘     └──────────────┘
 ```
-
-### 前端词云渲染
-
-```
-keywords.json ──▶ fetch() in onMounted ──▶ buildOption() ──▶ <VChart>
-                                                              │
-                                                    echarts-wordcloud
-```
-
-`KeywordBubble.vue` 使用 `vue-echarts` 封装，通过 `defineAsyncComponent` 延迟加载以避免 SSR 构建时的 `document is not defined` 错误。
 
 ### PII 隐私保护
 
@@ -321,8 +302,7 @@ https://github.com/bupt-visiting-guide/BUPT-VG
 3. 确认最新 deploy 状态为 **Published**（绿色）
 4. 访问网站 URL，检查以下页面是否正常：
    - 首页和各分类页内容是否最新
-   - `/insights/keyword-overview` 词云是否正常加载
-   - 各分类的 `generated-insights` 是否显示了新数据
+   - 各分类的 `generated-insights` 是否显示了新数据并通过侧边栏可访问
 
 ---
 
@@ -333,23 +313,17 @@ https://github.com/bupt-visiting-guide/BUPT-VG
 | `No CSV files found` | `data/raw/` 为空 | 将 CSV 文件放入该目录 |
 | `API key not set` | `.env` 未配置 | 检查 `.env` 中对应 key；确认 key 指向的 provider 与 `LLM_PROVIDER` 一致 |
 | LLM 返回乱码或空内容 | API 余额不足或超时 | 检查 LLM 平台余额；脚本内置指数退避重试，短时波动会自动恢复 |
-| 词云显示"无法加载关键词数据" | `keywords.json` 不存在或路径错误 | 确认文件在 `docs/public/data/keywords.json`；若文件存在但内容为空，重新跑脚本 |
-| `keywords.json failed schema validation` | LLM 返回格式异常 | 重新运行脚本；若持续失败，检查 LLM provider 余额或切换 provider |
 | Netlify build 失败 | Node 版本不匹配 | 检查 `netlify.toml` 中 `NODE_VERSION` 是否为 `"22"` |
 | GitHub 链接指向旧仓库地址 | 仓库迁移或重命名 | 参考 [8.2 节](#82-configmts-中的仓库地址)，更新 `.vitepress/config.mts` 中的两处 URL |
 | 新页面不出现在导航/侧边栏 | `config.mts` 未更新 | 在 `.vitepress/config.mts` 的 `nav` 和 `sidebar` 中添加条目 |
-| 开发服务器词云不显示 | SSR 兼容问题 | 确认 `KeywordBubble` 通过 `defineAsyncComponent` 加载；刷新页面即可 |
 
 ---
 
 ## 11. 进阶：修改 LLM 提示词
 
-编辑以下文件，然后重新运行 `.venv/Scripts/python scripts/etl/run.py`：
+编辑 `scripts/etl/prompts/insight_extraction.txt`，然后重新运行 `.venv/Scripts/python scripts/etl/run.py`。
 
-- `scripts/etl/prompts/insight_extraction.txt` — 控制各分类摘要的输出格式（核心建议、常见困难、综合总结）
-- `scripts/etl/prompts/keyword_extraction.txt` — 控制 LLM 关键词的提取数量、长度和输出格式
-
-修改提示词后建议先在单个分类上验证效果，再全量运行。
+该文件控制各分类摘要的输出格式（核心建议、常见困难、综合总结）。修改提示词后建议先在单个分类上验证效果，再全量运行。
 
 ---
 
@@ -415,7 +389,6 @@ git push
                  │              │  Export to CSV
                  │              ▼
                  │         data/raw/  ──▶ ETL 管道 ──▶ generated-insights.md
-                 │                                      ▶ keywords.json
                  ▼
           上线前检查清单内联状态提示
 ```
@@ -503,7 +476,7 @@ def netlify_submission_to_row(sub: dict) -> dict:
 rows_csv = read_all_csvs()
 rows_netlify = read_netlify_submissions()   # 新增
 rows = rows_csv + rows_netlify
-category_summaries, keyword_counts = transform(rows)
+category_summaries = transform(rows)
 ```
 
 > 注意：`attachment` 字段中的文件内容未经 PII 脱敏，建议在 `extract_text_from_attachment()` 之后复用 `extract.py` 中现有的 `strip_pii()` 函数进行脱敏，再拼接到 `response` 字段中。
@@ -521,7 +494,7 @@ category_summaries, keyword_counts = transform(rows)
 - [ ] `data/raw/` 中有至少一个 CSV 文件
 - [ ] `.venv/Scripts/python scripts/etl/run.py` 成功完成（macOS/Linux 使用 `.venv/bin/python`）
 - [ ] `npm run docs:dev` 本地预览无异常
-- [ ] 词云页面 `/insights/keyword-overview` 正常渲染
+- [ ] 三个分类的 `generated-insights` 页面通过侧边栏可访问
 - [ ] 各页面 GitHub 编辑链接指向正确的仓库路径
 
 ---

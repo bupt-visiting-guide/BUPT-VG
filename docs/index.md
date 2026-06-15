@@ -10,8 +10,8 @@ hero:
       text: 行前准备
       link: /pre-departure/
     - theme: alt
-      text: 关键词图谱
-      link: /insights/keyword-overview
+      text: 贡献经验
+      link: /contribute/
 
 features:
   - icon: 🗂️
@@ -26,8 +26,8 @@ features:
     title: 生活与心态
     details: 日常生活适应、校园边缘感调试，以及保持积极心态的实用建议。
     link: /life-and-mindset/
-  - icon: 🔍
-    title: 关键词图谱
-    details: 从全体问卷中提炼的高频经验词云，一图读懂访学关键议题。
-    link: /insights/keyword-overview
+  - icon: ✍️
+    title: 贡献经验
+    details: 填写问卷，将你的访学经历汇入指南，帮助后来的同学少走弯路。
+    link: /contribute/
 ---

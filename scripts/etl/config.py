@@ -11,7 +11,6 @@ load_dotenv()
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RAW_DATA_DIR = PROJECT_ROOT / "data" / "raw"
 DOCS_DIR     = PROJECT_ROOT / "docs"
-OUTPUT_JSON  = DOCS_DIR / "public" / "data" / "keywords.json"
 
 # Category key → output directory. Keys must match sidebar sections in config.mts.
 CATEGORIES: dict[str, Path] = {
@@ -35,9 +34,3 @@ API_KEYS: dict[str, str] = {
     "openai":   os.getenv("OPENAI_API_KEY", ""),
 }
 
-# ── Seed keywords ─────────────────────────────────────────────────────────────
-SEED_KEYWORDS: list[str] = [
-    "微电子", "绩点", "实验室", "导师", "签证",
-    "住宿", "文化冲击", "选课", "论文", "奖学金",
-    "交流项目", "语言关", "实习", "宿舍", "同学",
-]
