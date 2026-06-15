@@ -8,9 +8,11 @@ const content    = ref('')
 const alias      = ref('')
 const attachFile = ref<File | null>(null)
 const fileError  = ref('')
+const contentError = ref('')
 const status     = ref<Status>('idle')
 const errorMsg   = ref('')
 
+const MIN_CONTENT_LENGTH = 20
 const MAX_FILE_BYTES = 5 * 1024 * 1024
 
 function handleFileChange(e: Event) {
@@ -26,6 +28,13 @@ function handleFileChange(e: Event) {
 }
 
 async function handleSubmit() {
+  // 至少需要文本内容或文件附件之一
+  contentError.value = ''
+  if (content.value.trim().length < MIN_CONTENT_LENGTH && !attachFile.value) {
+    contentError.value = `请填写经验内容（至少 ${MIN_CONTENT_LENGTH} 字），或上传文件附件`
+    return
+  }
+
   status.value = 'submitting'
   errorMsg.value = ''
 
@@ -72,10 +81,9 @@ async function handleSubmit() {
         v-model="content"
         name="content"
         rows="6"
-        minlength="20"
-        required
-        placeholder="请描述你的亲身经验（至少 20 字）"
+        placeholder="请描述你的亲身经验，或上传文件附件（二选一即可）"
       />
+      <p v-if="contentError" class="ef-error" role="alert">{{ contentError }}</p>
     </div>
 
     <div class="ef-field">
