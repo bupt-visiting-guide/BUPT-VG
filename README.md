@@ -72,7 +72,7 @@ bupt-visiting-guide/
 │   ├── run.py                    # 入口脚本
 │   ├── config.py                 # 路径、LLM provider 配置
 │   ├── extract.py                # CSV 读取 + PII 脱敏
-│   ├── transform.py              # LLM 逐行标签提取（tags + alias）
+│   ├── transform.py              # LLM 逐行标签提取（tags + major）
 │   ├── load.py                   # 增量追加写入 experiences.json
 │   ├── fetcher.py                # Netlify Forms API 拉取 + 附件下载
 │   ├── parser.py                 # 附件文本提取（TXT / PDF）
@@ -96,7 +96,7 @@ data/raw/*.csv  (or Netlify API via fetcher.py)
     │
     ▼  extract.py（读取 + 脱敏）
     │
-    ▼  transform.py（LLM 逐行提取 tags + alias，原文不改）
+    ▼  transform.py（LLM 逐行提取 tags + major，原文不改）
     │
     └──▶ docs/public/data/experiences.json  （增量追加 + MD5 去重）
               │
@@ -206,7 +206,7 @@ CSV 必须包含以下列（列名可为中文或英文）：
 脚本会自动完成以下操作：
 
 1. **Extract** — 读取所有 CSV，脱敏个人信息（学号、手机号、邮箱），汇总为结构化列表
-2. **Transform** — 逐行调用 LLM 提取 `tags`（2-3 个关键词）与 `alias`（可选），原文 `original_text` 不做任何修改
+2. **Transform** — 逐行调用 LLM 提取 `tags`（2-3 个关键词）与 `major`（专业背景），原文 `original_text` 不做任何修改
 3. **Load** — 追加写入 `docs/public/data/experiences.json`，基于 MD5 文本哈希去重
 
 ### 步骤三：本地预览 & 推送
@@ -246,7 +246,7 @@ git push
 │ Extract  │ ──▶ │  Transform   │ ──▶ │    Load      │
 │          │     │              │     │              │
 │ CSV→rows │     │ LLM→tags     │     │ JSON 追加    │
-│ PII 脱敏 │     │ +alias       │     │ MD5 去重     │
+│ PII 脱敏 │     │ +tags+major  │     │ MD5 去重     │
 └──────────┘     └──────────────┘     └──────────────┘
 ```
 
@@ -326,7 +326,7 @@ https://github.com/bupt-visiting-guide/BUPT-VG
 
 编辑 `scripts/etl/prompts/row_extraction.txt`，然后重新运行 `.venv/Scripts/python scripts/etl/run.py`。
 
-该文件控制 LLM 从每条原文中提取的 `tags`（2-3 个关键词）和 `alias`（可选身份信息）的格式。修改提示词后建议先在少量 CSV 上验证效果，再全量运行。
+该文件控制 LLM 从每条原文中提取的 `tags`（2-3 个关键词）和 `major`（专业背景，禁止提取姓名）的格式。修改提示词后建议先在少量 CSV 上验证效果，再全量运行。
 
 ---
 
@@ -353,7 +353,7 @@ Netlify 原生支持将收集到的表单数据一键导出为 CSV：
 
 ### 13.2 无缝对接 ETL 管道
 
-导出的 CSV 字段名与前台表单一致（`category`、`content`、`alias`）。管道已在 Extract 阶段内置了以下自动转换，维护者无需手动预处理：
+导出的 CSV 字段名与前台表单一致（`category`、`content`、`major`）。管道已在 Extract 阶段内置了以下自动转换，维护者无需手动预处理：
 
 - **`content` → `response`** 列名映射（`COLUMN_ALIASES`）
 - **中文分类 → 英文 key** 的自动转换（`CATEGORY_LABEL_MAP`：行前准备 → `pre-departure` 等）
@@ -395,7 +395,7 @@ git push
 
 ### 13.4 文件附件在 Netlify 中的导出形态
 
-表单支持两种录入模式（自 2026-06 起）：结构化提交（category / content / alias）和历史数据灌入（raw_content + attachment 文件）。
+表单支持两种录入模式（自 2026-06 起）：结构化提交（category / content / major）和历史数据灌入（raw_content + attachment 文件）。
 
 当提交包含文件附件时，Netlify **不会**将文件内嵌到 CSV 导出中，而是以**可下载 URL** 的形式呈现。在 Netlify 控制台的 **Forms → Submissions** JSON 视图中，`attachment` 字段的值类似于：
 

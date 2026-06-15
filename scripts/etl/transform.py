@@ -1,6 +1,6 @@
 """
 Transform phase — per-row metadata extraction.
-LLM extracts tags + alias only; original_text passes through unchanged.
+LLM extracts tags + major only; original_text passes through unchanged.
 """
 import hashlib
 import json
@@ -61,7 +61,7 @@ def _parse_json_array(raw: str) -> list[dict]:
 
 
 def _extract_batch_metadata(batch: list[dict], start_idx: int) -> dict[int, dict]:
-    """Call LLM for one batch; return {global_idx: {tags, alias}} mapping."""
+    """Call LLM for one batch; return {global_idx: {tags, major}} mapping."""
     client, model = _get_client()
     template = _load_prompt("row_extraction.txt")
     lines = []
@@ -83,12 +83,12 @@ def _extract_batch_metadata(batch: list[dict], start_idx: int) -> dict[int, dict
     for item in _parse_json_array(raw):
         idx = item.get("idx")
         if isinstance(idx, int):
-            result[idx] = {"tags": item.get("tags", []), "alias": item.get("alias")}
+            result[idx] = {"tags": item.get("tags", []), "major": item.get("major")}
     return result
 
 
 def extract_row_metadata(rows: list[dict]) -> list[dict]:
-    """Enrich each row with id, tags, alias. original_text is unchanged."""
+    """Enrich each row with id, tags, major. original_text is unchanged."""
     enriched: list[dict] = []
     total = len(rows)
 
@@ -104,12 +104,14 @@ def extract_row_metadata(rows: list[dict]) -> list[dict]:
         for j, row in enumerate(batch):
             meta = meta_map.get(batch_start + j, {})
             text = str(row.get("response", "")).strip()
+            # Prefer explicitly submitted major (form field) over LLM guess
+            user_major = str(row.get("major") or "").strip() or None
             enriched.append({
                 "id":            _row_id(text),
                 "original_text": text,
                 "category":      str(row.get("category", "")).strip(),
                 "tags":          meta.get("tags") or [],
-                "alias":         meta.get("alias"),
+                "major":         user_major if user_major else meta.get("major"),
                 "source_file":   str(row.get("source_file", "")),
             })
 

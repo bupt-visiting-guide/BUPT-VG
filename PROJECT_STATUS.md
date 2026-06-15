@@ -43,11 +43,11 @@
 | 模块 | 状态 | 说明 |
 | --- | --- | --- |
 | `extract.py` | ✅ 完成 | CSV 读取、列名别名映射（含 Netlify Forms `content`→`response` 及中文分类→英文 key）、PII 正则脱敏 |
-| `transform.py` | ✅ 完成 | 逐行 LLM 元数据提取（`tags` + `alias`），batch=20，原文不修改；失败自动降级为空元数据 |
+| `transform.py` | ✅ 完成 | 逐行 LLM 元数据提取（`tags` + `major`），batch=20，原文不修改；失败自动降级为空元数据 |
 | `load.py` | ✅ 完成 | 增量追加写入 `experiences.json`，按 MD5 id 去重；损坏 JSON 时自动重建 |
 | `run.py` | ✅ 完成 | 三阶段管道入口，错误兜底处理 |
 | `config.py` | ✅ 完成 | 路径、LLM Provider 切换、`EXPERIENCES_JSON_PATH` 常量 |
-| `prompts/row_extraction.txt` | ✅ 完成 | 逐行提取 `tags`（2-3 词）+ `alias`（可选）JSON 数组输出 |
+| `prompts/row_extraction.txt` | ✅ 完成 | 逐行提取 `tags`（2-3 词）+ `major`（仅专业背景，禁止提取姓名）JSON 数组输出 |
 | `fetcher.py` | ✅ 完成 | Netlify Forms API 拉取 + 附件下载缓存，返回与 `read_all_csvs()` 同构的行列表 |
 | `parser.py` | ✅ 完成 | 附件文本提取（TXT / 文本型 PDF），永不抛异常；图片/扫描 PDF 返回语义化占位符 |
 
@@ -55,7 +55,7 @@
 
 | 模块 | 状态 | 说明 |
 | --- | --- | --- |
-| `docs/public/data/experiences.json` | ✅ 完成 | 结构化经验数据库（SSOT），每条约含 `id` / `original_text` / `category` / `tags` / `alias` / `source_file`，`meta` 含更新时间与总数 |
+| `docs/public/data/experiences.json` | ✅ 完成 | 结构化经验数据库（SSOT），每条约含 `id` / `original_text` / `category` / `tags` / `major` / `source_file`，`meta` 含更新时间与总数 |
 
 ### 2.5 环境与部署
 
@@ -80,7 +80,7 @@
 | `data/raw/` | ⬜ 空目录（仅 .gitkeep） | 需放入问卷 CSV 后运行 ETL 管道；数据来源：历届问卷导出 或 Netlify Forms 导出 |
 | `docs/public/data/experiences.json` | ✅ 已存在 | 当前为空（0 条记录），放入 CSV 运行 ETL 后自动填充 |
 
-> **数据更新流程**：放入 CSV → 运行 `.venv/Scripts/python scripts/etl/run.py` → 脚本对每条原文调用 LLM 提取 tags/alias → 追加写入 `experiences.json`（MD5 去重）→ 推送后前端卡片墙自动更新。
+> **数据更新流程**：放入 CSV → 运行 `.venv/Scripts/python scripts/etl/run.py` → 脚本对每条原文调用 LLM 提取 tags/major → 追加写入 `experiences.json`（MD5 去重）→ 推送后前端卡片墙自动更新。
 
 ### 3.2 建议后续增强
 
@@ -155,7 +155,7 @@ git add docs/ && git commit -m "..." && git push  # 推送自动部署
                      │
                      ▼  extract.py（CSV 读取 + PII 脱敏 + 字段映射）
                      │
-                     ▼  transform.py（LLM 逐行提取 tags + alias）
+                     ▼  transform.py（LLM 逐行提取 tags + major）
                      │
                      ▼  load.py（追加去重写入 experiences.json）
                      │

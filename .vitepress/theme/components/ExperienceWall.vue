@@ -6,7 +6,7 @@ interface Experience {
   original_text: string
   category: string
   tags: string[]
-  alias: string | null
+  major: string | null
 }
 
 const props = defineProps<{ category?: string }>()
@@ -70,7 +70,7 @@ function toggle(tag: string) {
         <p class="ew-text">{{ exp.original_text }}</p>
         <footer class="ew-footer">
           <span v-for="t in exp.tags" :key="t" class="ew-tag">{{ t }}</span>
-          <span v-if="exp.alias" class="ew-alias">— {{ exp.alias }}</span>
+          <span v-if="exp.major" class="ew-major">{{ exp.major }}</span>
         </footer>
       </article>
     </div>
@@ -175,7 +175,7 @@ function toggle(tag: string) {
   font-weight: 500;
 }
 
-.ew-alias {
+.ew-major {
   font-size: 0.8rem;
   color: var(--vp-c-text-3);
   margin-left: auto;

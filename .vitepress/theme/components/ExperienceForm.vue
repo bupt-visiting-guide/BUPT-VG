@@ -7,7 +7,7 @@ type Mode   = 'structured' | 'bulk'
 const mode       = ref<Mode>('structured')
 const category   = ref('')
 const content    = ref('')
-const alias      = ref('')
+const major      = ref('')
 const rawContent = ref('')
 const attachFile = ref<File | null>(null)
 const fileError  = ref('')
@@ -44,7 +44,7 @@ async function handleSubmit() {
   if (mode.value === 'structured') {
     fd.append('category', category.value)
     fd.append('content',  content.value)
-    fd.append('alias',    alias.value)
+    fd.append('major',    major.value)
   } else {
     fd.append('raw_content', rawContent.value)
     if (attachFile.value) fd.append('attachment', attachFile.value)
@@ -105,13 +105,13 @@ async function handleSubmit() {
     </div>
 
     <div v-show="mode === 'structured'" class="ef-field">
-      <label for="ef-alias">昵称 / 专业（可选）</label>
+      <label for="ef-major">专业（可选）</label>
       <input
-        id="ef-alias"
-        v-model="alias"
+        id="ef-major"
+        v-model="major"
         type="text"
-        name="alias"
-        placeholder="匿名提交请留空"
+        name="major"
+        placeholder="例如：计算机科学 / 通信工程"
       />
     </div>
 
