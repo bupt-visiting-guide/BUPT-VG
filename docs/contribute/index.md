@@ -9,14 +9,22 @@ description: 分享你的访学经历，帮助后来者少走弯路
 
 <!-- Netlify build-bot registration stub.
      This hidden form declares the schema to Netlify's pre-deployment
-     HTML scanner.  Field names must match the URLSearchParams keys
+     HTML scanner.  Field names must match the FormData keys
      posted by ExperienceForm.vue. -->
-<form name="experience-submission" netlify netlify-honeypot="bot-field" hidden>
+<form
+  name="experience-submission"
+  netlify
+  netlify-honeypot="bot-field"
+  enctype="multipart/form-data"
+  hidden
+>
   <input type="hidden" name="form-name" value="experience-submission" />
   <input name="bot-field" />
   <select name="category"></select>
   <textarea name="content"></textarea>
   <input name="alias" />
+  <textarea name="raw_content"></textarea>
+  <input type="file" name="attachment" accept=".pdf,.doc,.docx,.txt" />
 </form>
 
 <ExperienceForm />
