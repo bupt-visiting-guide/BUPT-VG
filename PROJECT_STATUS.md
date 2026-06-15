@@ -49,7 +49,9 @@
 | `load.py` | ✅ 完成 | Markdown 写入（全量覆盖），日期标注 |
 | `run.py` | ✅ 完成 | 三阶段管道入口，错误兜底处理 |
 | `config.py` | ✅ 完成 | 路径、LLM Provider 切换 |
-| `prompts/insight_extraction.txt` | ✅ 完成 | 核心建议/常见困难/综合总结 三段式 |
+| `prompts/insight_extraction.txt` | ✅ 完成 | 核心建议/常见困难/综合总结 三段式，含系统占位符忽略指令 |
+| `fetcher.py` | ✅ 完成 | Netlify Forms API 拉取 + 附件下载缓存，返回与 `read_all_csvs()` 同构的行列表 |
+| `parser.py` | ✅ 完成 | 附件文本提取（TXT / 文本型 PDF），永不抛异常；图片/扫描 PDF 返回语义化占位符 |
 
 ### 2.4 环境与部署
 
@@ -60,7 +62,7 @@
 | `.env.example` | ✅ 完成 | 三个 LLM Provider 的 Key 模板 |
 | `.env` | ✅ 完成 | DeepSeek API Key 已配置 |
 | `.gitignore` | ✅ 完成 | 排除 CSV 原始数据、构建产物、.env |
-| `requirements.txt` | ✅ 完成 | 5 个 Python 依赖（openai/pandas/dotenv/tenacity/jsonschema） |
+| `requirements.txt` | ✅ 完成 | 7 个 Python 依赖（openai/pandas/dotenv/tenacity/jsonschema/pdfplumber/requests） |
 | `README.md` | ✅ 完成 | 13 节完整维护手册，含 Netlify Forms 数据回收流程、故障排查表与上线清单 |
 
 ---
@@ -91,11 +93,11 @@
 | --- | --- |
 | 手写文档页面 | 14 个 |
 | LLM 自动生成页面 | 3 个（1 个已生成，2 个占位待数据） |
-| ETL 脚本 | 5 个 Python 文件 |
+| ETL 脚本 | 7 个 Python 文件 |
 | LLM 提示词 | 1 个模板 |
 | 前端组件 | 1 个（ExperienceForm.vue） |
 | 内容分类 | 3 个（行前/学业/生活） |
-| 总代码行数（估） | ~900 行（含 Python + Vue + TS） |
+| 总代码行数（估） | ~1,100 行（含 Python + Vue + TS） |
 
 ---
 
