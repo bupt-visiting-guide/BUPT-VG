@@ -15,6 +15,7 @@ export default defineConfig({
       { text: '学业与科研', link: '/academics/' },
       { text: '生活与心态', link: '/life-and-mindset/' },
       { text: '贡献经验', link: '/contribute/' },
+      { text: '资源导航', link: '/resources/' },
     ],
 
     sidebar: {
