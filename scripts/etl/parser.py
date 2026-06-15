@@ -15,6 +15,7 @@ _CORRUPTED_PLACEHOLDER   = "[FILE_CORRUPTED: 文件损坏或格式错误]"
 _IMAGE_SUFFIXES = frozenset({
     ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff", ".tif",
 })
+_DOCX_SUFFIXES = frozenset({".doc", ".docx"})
 _PDF_MIN_TEXT_CHARS = 20
 _MAX_TEXT_CHARS     = 5000
 _TRUNCATION_SUFFIX  = "...[文本过长已截断]"
@@ -32,6 +33,9 @@ def parse_file(path: "str | Path") -> str:
 
     if suffix == ".pdf":
         return _parse_pdf_path(path)
+
+    if suffix in _DOCX_SUFFIXES:
+        return _parse_docx_path(path)
 
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
@@ -57,6 +61,9 @@ def parse_bytes(raw: bytes, filename: str) -> str:
 
     if suffix == ".pdf":
         return _parse_pdf_bytes(raw, filename)
+
+    if suffix in _DOCX_SUFFIXES:
+        return _parse_docx_bytes(raw, filename)
 
     try:
         text = raw.decode("utf-8", errors="replace")
@@ -133,3 +140,34 @@ def _parse_pdf_bytes(raw: bytes, filename: str) -> str:
         return _UNSUPPORTED_PLACEHOLDER
 
     return _truncate(text)
+
+
+def _parse_docx_path(path: Path) -> str:
+    try:
+        from docx import Document
+    except ImportError:
+        logger.warning("\033[33m[PARSER-WARN]\033[0m python-docx not installed; skipping DOCX: %s", path.name)
+        return "[DOCX_UNSUPPORTED: 请运行 pip install python-docx]"
+    try:
+        doc = Document(path)
+        text = "\n".join(p.text for p in doc.paragraphs if p.text.strip())
+        return _truncate(text) if text.strip() else _CORRUPTED_PLACEHOLDER
+    except Exception as exc:
+        logger.warning("\033[33m[PARSER-WARN]\033[0m Failed to parse DOCX %s: %s", path.name, exc)
+        return _CORRUPTED_PLACEHOLDER
+
+
+def _parse_docx_bytes(raw: bytes, filename: str) -> str:
+    import io
+    try:
+        from docx import Document
+    except ImportError:
+        logger.warning("\033[33m[PARSER-WARN]\033[0m python-docx not installed; skipping DOCX: %s", filename)
+        return "[DOCX_UNSUPPORTED: 请运行 pip install python-docx]"
+    try:
+        doc = Document(io.BytesIO(raw))
+        text = "\n".join(p.text for p in doc.paragraphs if p.text.strip())
+        return _truncate(text) if text.strip() else _CORRUPTED_PLACEHOLDER
+    except Exception as exc:
+        logger.warning("\033[33m[PARSER-WARN]\033[0m Failed to parse DOCX %s: %s", filename, exc)
+        return _CORRUPTED_PLACEHOLDER

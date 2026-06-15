@@ -2,9 +2,15 @@
 Extract phase: read all CSV files from data/raw/ and anonymize PII before
 passing data downstream to the LLM transform phase.
 """
+import json
 import re
+from pathlib import Path
+
 import pandas as pd
 from config import RAW_DATA_DIR
+
+# Shared attachment download cache (same location as fetcher.py).
+_ATTACH_CACHE = Path(__file__).resolve().parents[2] / ".vitepress" / "cache" / "attachments"
 
 # Map questionnaire export column headers to internal field names.
 # Extend this dict to handle different export formats.
@@ -55,6 +61,40 @@ def classify_category(text: str) -> str | None:
             best_score, best_cat = score, cat
     return best_cat if best_score > 0 else None
 
+# ── Attachment helpers ────────────────────────────────────────────────────────
+
+def _download_and_parse_csv_attachment(att_json: str) -> str:
+    """Parse a Netlify CSV attachment field (JSON string), download the file,
+    and return extracted text.  Returns empty string on any failure."""
+    try:
+        att = json.loads(att_json)
+        url = att.get("url", "")
+        filename = att.get("filename", "attachment")
+    except (json.JSONDecodeError, AttributeError, TypeError):
+        return ""
+
+    if not url:
+        return ""
+
+    import requests
+    from parser import parse_file
+
+    _ATTACH_CACHE.mkdir(parents=True, exist_ok=True)
+    safe_name = re.sub(r"[^\w.\-]", "_", filename)
+    dest = _ATTACH_CACHE / safe_name
+
+    if not dest.exists():
+        try:
+            resp = requests.get(url, timeout=60)
+            resp.raise_for_status()
+            dest.write_bytes(resp.content)
+        except Exception as exc:
+            print(f"\033[33m[EXTRACT-WARN]\033[0m Failed to download {filename}: {exc}")
+            return ""
+
+    return parse_file(dest)
+
+
 # ── Main extract function ─────────────────────────────────────────────────────
 
 def read_all_csvs() -> list[dict]:
@@ -87,6 +127,18 @@ def read_all_csvs() -> list[dict]:
             if merged_count:
                 print(f"[EXTRACT] Merged raw_content → response for {merged_count} row(s).")
 
+        # Handle Netlify CSV attachment column (JSON-encoded file info with URL).
+        # Download and parse the file whenever response is still empty.
+        if "attachment" in df.columns:
+            df["response"] = df["response"].fillna("").astype(str)
+            needs_parse = df["response"].str.strip().eq("") & df["attachment"].fillna("").str.strip().ne("")
+            if needs_parse.any():
+                print(f"[EXTRACT] Downloading and parsing {needs_parse.sum()} attachment(s) from {csv_path.name}…")
+                parsed = df.loc[needs_parse, "attachment"].apply(
+                    lambda s: _download_and_parse_csv_attachment(str(s))
+                )
+                df.loc[needs_parse, "response"] = parsed
+
         df["source_file"] = csv_path.name
         # Map Chinese category labels to internal English keys
         if "category" in df.columns:
@@ -105,6 +157,12 @@ def read_all_csvs() -> list[dict]:
                 print(f"[EXTRACT] Keyword-classified category for {n_rescued} row(s).")
         # Anonymize in place before any downstream processing
         df["response"] = df["response"].fillna("").astype(str).apply(anonymize)
+        # Drop rows with no usable content (bot submissions, empty uploads, etc.)
+        before = len(df)
+        df = df[df["response"].str.strip().ne("")]
+        dropped = before - len(df)
+        if dropped:
+            print(f"[EXTRACT] Dropped {dropped} empty row(s) from {csv_path.name}.")
         rows.extend(df.to_dict(orient="records"))
 
     print(f"[EXTRACT] Loaded {len(rows)} rows from {len(csv_files)} file(s), PII anonymized.")

@@ -16,6 +16,13 @@ from config import API_KEYS, LLM_ENDPOINTS, LLM_PROVIDER
 logger = logging.getLogger(__name__)
 
 _BATCH_SIZE = 20
+_NAN_STRINGS = frozenset({"nan", "none", "null", ""})
+
+
+def _clean_str(value) -> str | None:
+    """Convert a value to stripped string, returning None for pandas NaN and blank values."""
+    s = str(value).strip() if value is not None else ""
+    return None if s.lower() in _NAN_STRINGS else s
 
 
 def _row_id(text: str) -> str:
@@ -117,7 +124,7 @@ def extract_row_metadata(rows: list[dict]) -> list[dict]:
                 "original_text": text,
                 "category":      category,
                 "tags":          tags,
-                "alias":         str(row.get("alias") or "").strip() or None,
+                "alias":         _clean_str(row.get("alias")),
                 "major":         meta.get("major"),
                 "source_file":   str(row.get("source_file", "")),
             })

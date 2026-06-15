@@ -75,7 +75,7 @@ bupt-visiting-guide/
 │   ├── transform.py              # LLM 逐行标签提取（tags + major）
 │   ├── load.py                   # 增量追加写入 experiences.json
 │   ├── fetcher.py                # Netlify Forms API 拉取 + 附件下载
-│   ├── parser.py                 # 附件文本提取（TXT / PDF）
+│   ├── parser.py                 # 附件文本提取（TXT / PDF / DOCX）
 │   ├── requirements.txt
 │   └── prompts/
 │       └── row_extraction.txt    # 逐行标签提取提示词
@@ -487,7 +487,7 @@ category_summaries = transform(rows)
 
 **当前已知限制**
 
-当前系统暂不支持多模态视觉处理与 OCR，无法提取纯图片（`.png`、`.jpg` 等）或扫描版 PDF 中的经验文本。
+当前系统已支持 TXT / PDF / DOCX 文件的文本提取。暂不支持多模态视觉处理与 OCR，无法提取纯图片（`.png`、`.jpg` 等）或扫描版 PDF 中的经验文本。
 
 `scripts/etl/parser.py` 对上述情形的处理策略：
 - **图片文件**：直接跳过，返回占位符 `[IMAGE_UNSUPPORTED: 当前版本暂不支持图片解析]`，终端输出 `[PARSER-WARN]` 警告

@@ -20,7 +20,7 @@
 | 首页 (`docs/index.md`) | ✅ 完成 | Hero + 4 个 Feature 卡片，含跳转链接 |
 | 自定义主题 (`theme/index.ts`) | ✅ 完成 | 扩展默认主题，注册 ExperienceForm、ExperienceWall 组件 |
 | 经验征集表单 (`ExperienceForm.vue`) | ✅ 完成 | 双模式表单（结构化提交 / 批量灌入+附件上传），FormData POST 到 Netlify Forms，SSR-safe |
-| 经验卡片墙 (`ExperienceWall.vue`) | ✅ 完成 | 客户端异步加载 `experiences.json`，标签筛选 + 响应式 CSS columns 卡片墙 |
+| 经验卡片墙 (`ExperienceWall.vue`) | ✅ 完成 | 客户端异步加载 `experiences.json`，4 行预览 + 原生 `<dialog>` 弹窗详情 + 标签筛选 + 响应式 CSS columns 卡片墙 |
 
 ### 2.2 文档内容（11 个页面）
 
@@ -42,14 +42,14 @@
 
 | 模块 | 状态 | 说明 |
 | --- | --- | --- |
-| `extract.py` | ✅ 完成 | CSV 读取、列名别名映射（含 Netlify Forms `content`→`response` 及中文分类→英文 key）、PII 正则脱敏 |
+| `extract.py` | ✅ 完成 | CSV 读取、列名别名映射（含 Netlify Forms `content`→`response` 及中文分类→英文 key）、CSV 附件列下载解析、PII 正则脱敏、空行过滤 |
 | `transform.py` | ✅ 完成 | 逐行 LLM 元数据提取（`tags` + `major`），batch=20，原文不修改；失败自动降级为空元数据；category 缺失时通过 tags 关键词匹配自动补全 |
 | `load.py` | ✅ 完成 | 增量追加写入 `experiences.json`，按 MD5 id 去重；损坏 JSON 时自动重建 |
 | `run.py` | ✅ 完成 | 三阶段管道入口，错误兜底处理 |
 | `config.py` | ✅ 完成 | 路径、LLM Provider 切换、`EXPERIENCES_JSON_PATH` 常量 |
 | `prompts/row_extraction.txt` | ✅ 完成 | 逐行提取 `tags`（2-3 词）+ `major`（仅专业背景，禁止提取姓名）JSON 数组输出 |
 | `fetcher.py` | ✅ 完成 | Netlify Forms API 拉取 + 附件下载缓存 + 关键词自动分类，返回与 `read_all_csvs()` 同构的行列表 |
-| `parser.py` | ✅ 完成 | 附件文本提取（TXT / 文本型 PDF），永不抛异常；图片/扫描 PDF 返回语义化占位符 |
+| `parser.py` | ✅ 完成 | 附件文本提取（TXT / 文本型 PDF / DOCX），永不抛异常；图片/扫描 PDF 返回语义化占位符 |
 
 ### 2.4 数据存储
 
@@ -87,7 +87,8 @@
 | 事项 | 说明 |
 | --- | --- |
 | `ExperienceWall.vue` 错误状态 | fetch 失败时与控制台空数据共用"暂无数据"，建议增加独立错误提示 |
-| 多模态附件处理 | `parser.py` 暂不支持图片/扫描 PDF，参见 README §13.6 Roadmap |
+| 多模态附件处理 | `parser.py` 已支持 TXT / PDF / DOCX，暂不支持图片/扫描 PDF，参见 README §13.6 Roadmap |
+| 图片/扫描 PDF OCR | 参见 README §13.6 Roadmap 中的两条演进路径（多模态 LLM / 本地 OCR） |
 
 ---
 
@@ -101,7 +102,7 @@
 | LLM 提示词模板 | 1 个（row_extraction.txt） |
 | JSON 数据存储 | 1 个（experiences.json，SSOT） |
 | 内容分类 | 3 个（行前/学业/生活） |
-| 总代码行数（估） | ~1,300 行（含 Python + Vue + TS） |
+| 总代码行数（估） | ~1,550 行（含 Python + Vue + TS） |
 
 ---
 
