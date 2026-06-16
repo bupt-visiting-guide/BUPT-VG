@@ -103,6 +103,7 @@ def extract_row_metadata(rows: list[dict]) -> list[dict]:
                 "original_text": text,
                 "category":      category,
                 "summary":       (chunk.get("summary") or "")[:50],
+                "exact_quote":   (chunk.get("exact_quote") or "")[:500],
                 "tags":          chunk.get("tags") or [],
                 "major":         chunk.get("major") if category == "academics" else None,
                 "alias":         _clean_str(row.get("alias")),

@@ -1,6 +1,6 @@
 # BUPT 访学指南 — 维护手册
 
-基于 [VitePress](https://vitepress.dev) 的静态文档网站，汇聚北邮历届交流访学同学的问卷经验。数据以结构化 JSON 为单一数据源（SSOT），LLM 仅生成标签元数据、原始文本 100% 保真；前端通过 Vue 组件异步渲染为可筛选的经验卡片墙。Netlify 持续部署。
+基于 [VitePress](https://vitepress.dev) 的静态文档网站，汇聚北邮历届交流访学同学的问卷经验。数据以结构化 JSON 为单一数据源（SSOT），LLM 生成摘要、标签和原文摘录（exact_quote），原始文本 100% 保真；前端通过 Vue 组件异步渲染为可筛选的经验卡片墙，弹窗内原文高亮对应的摘录片段。Netlify 持续部署。
 
 **内容更新只需三步**：换 CSV → 跑脚本 → 推代码。
 
@@ -74,7 +74,7 @@ bupt-visiting-guide/
 │   ├── run.py                    # 入口脚本
 │   ├── config.py                 # 路径、LLM provider 配置
 │   ├── extract.py                # CSV 读取 + PII 脱敏
-│   ├── transform.py              # LLM 语义分块（summary + tags + category）
+│   ├── transform.py              # LLM 语义分块（summary + exact_quote + tags + category）
 │   ├── load.py                   # 增量追加写入 experiences.json
 │   ├── fetcher.py                # Netlify Forms API 拉取 + 附件下载
 │   ├── parser.py                 # 附件文本提取（TXT / PDF / DOCX）
@@ -98,7 +98,7 @@ data/raw/*.csv  (or Netlify API via fetcher.py)
     │
     ▼  extract.py（读取 + 脱敏）
     │
-    ▼  transform.py（LLM 语义分块：每条回答 → 0~3 个维度块，含 summary + tags + category）
+    ▼  transform.py（LLM 语义分块：每条回答 → 0~3 个维度块，含 summary + exact_quote + tags + category）
     │
     └──▶ docs/public/data/experiences.json  （增量追加 + source_hash 去重）
               │
@@ -219,7 +219,7 @@ CSV 必须包含以下列（列名可为中文或英文）：
 脚本会自动完成以下操作：
 
 1. **Extract** — 读取所有 CSV，脱敏个人信息（学号、手机号、邮箱），汇总为结构化列表
-2. **Transform** — 逐行调用 LLM 进行语义分块：每条回答按内容维度拆分为 0~3 个独立记录（pre-departure / academics / life-and-mindset），每个记录包含 `summary`（≤50 字摘要）、`tags`（2-3 个关键词）与 `category`；原文 `original_text` 完整保留
+2. **Transform** — 逐行调用 LLM 进行语义分块：每条回答按内容维度拆分为 0~3 个独立记录（pre-departure / academics / life-and-mindset），每个记录包含 `summary`（≤50 字摘要）、`exact_quote`（原文摘录 20–200 字，100% 字面匹配）、`tags`（2-3 个关键词）与 `category`；原文 `original_text` 完整保留
 3. **Load** — 追加写入 `docs/public/data/experiences.json`，基于 `source_hash`（原始文本哈希）去重，已处理过的源文本不会重复入库
 
 ### 步骤三：本地预览 & 推送
@@ -256,12 +256,13 @@ git push
 ### ETL 管道
 
 ```
-┌──────────┐     ┌──────────────┐     ┌──────────────┐
-│ Extract  │ ──▶ │  Transform       │ ──▶ │    Load      │
+┌──────────┐     ┌──────────────────┐     ┌──────────────┐
+│ Extract  │ ──▶ │    Transform     │ ──▶ │    Load      │
 │          │     │                  │     │              │
-│ CSV→rows │     │ LLM 语义分块     │     │ JSON 追加    │
-│ PII 脱敏 │     │ summary+tags+cat │     │ 源文本去重   │
-└──────────┘     └──────────────┘     └──────────────┘
+│ CSV→rows │     │  LLM 语义分块    │     │  JSON 追加   │
+│ PII 脱敏 │     │  summary+quote   │     │  源文本去重  │
+└──────────┘     │  +tags+cat       │     └──────────────┘
+                 └──────────────────┘
 ```
 
 ### PII 隐私保护
@@ -340,7 +341,7 @@ https://github.com/bupt-visiting-guide/BUPT-VG
 
 编辑 `scripts/etl/prompts/row_extraction.txt`，然后重新运行 `.venv/Scripts/python scripts/etl/run.py`。
 
-该文件控制 LLM 将每条原始回答按内容维度拆分为 0~3 个语义块（pre-departure / academics / life-and-mindset），每个块包含 `summary`（≤50 字中文摘要）、`tags`（2-3 个关键词）和 `category`。修改提示词后建议先在少量 CSV 上验证效果，再全量运行。
+该文件控制 LLM 将每条原始回答按内容维度拆分为 0~3 个语义块（pre-departure / academics / life-and-mindset），每个块包含 `summary`（≤50 字中文摘要）、`exact_quote`（原文摘录 20–200 字，100% 字面匹配，供弹窗高亮定位）、`tags`（2-3 个关键词）和 `category`。修改提示词后建议先在少量 CSV 上验证效果，再全量运行。
 
 ---
 

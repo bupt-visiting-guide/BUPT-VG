@@ -6,6 +6,7 @@ interface Experience {
   original_text: string
   category: string
   summary: string
+  exact_quote: string
   tags: string[]
   alias: string | null
   major: string | null
@@ -48,10 +49,6 @@ function toggle(tag: string) {
   selected.value = selected.value === tag ? null : tag
 }
 
-function preview(text: string, limit = 200): string {
-  return text.length > limit ? text.slice(0, limit) + '…' : text
-}
-
 function openModal(exp: Experience) {
   activeExp.value = exp
   dialog.value?.showModal()
@@ -60,6 +57,81 @@ function openModal(exp: Experience) {
 function closeModal() {
   dialog.value?.close()
   activeExp.value = null
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+// Collapse <br/>, CRLF, and whitespace runs to single spaces.
+// Returns [normalizedStr, posMap] where posMap[i] = index in original for normalizedStr[i].
+function normalizeStr(s: string): [string, number[]] {
+  const chars: string[] = []
+  const pos: number[] = []
+  let prevSpace = false
+  let i = 0
+  while (i < s.length) {
+    const brMatch = s[i] === '<' ? s.slice(i).match(/^<br\s*\/?>/) : null
+    if (brMatch) {
+      if (!prevSpace) { chars.push(' '); pos.push(i); prevSpace = true }
+      i += brMatch[0].length
+      continue
+    }
+    if (/\s/.test(s[i])) {
+      if (!prevSpace) { chars.push(' '); pos.push(i); prevSpace = true }
+      i++; continue
+    }
+    chars.push(s[i]); pos.push(i); prevSpace = false; i++
+  }
+  return [chars.join(''), pos]
+}
+
+// Find [start, end) in original where quote best matches.
+// Three passes: exact → normalized → sentence-anchor fallback.
+function findRange(original: string, quote: string): [number, number] | null {
+  // Pass 1: exact
+  let idx = original.indexOf(quote)
+  if (idx !== -1) return [idx, idx + quote.length]
+
+  // Pass 2: normalized (handles <br/>, CRLF, whitespace variants)
+  const [normOrig, origPos] = normalizeStr(original)
+  const normQ = normalizeStr(quote)[0]
+  idx = normOrig.indexOf(normQ)
+  if (idx !== -1 && idx < origPos.length) {
+    const endNi = Math.min(idx + normQ.length - 1, origPos.length - 1)
+    return [origPos[idx], origPos[endNi] + 1]
+  }
+
+  // Pass 3: sentence-anchor (handles LLM joining clauses with ；instead of <br/>)
+  const sentences = quote.split(/[。！？；\n]+/).map(s => s.trim()).filter(s => s.length >= 6)
+  if (!sentences.length) return null
+  const firstIdx = original.indexOf(sentences[0])
+  if (firstIdx === -1) return null
+  if (sentences.length === 1) return [firstIdx, firstIdx + sentences[0].length]
+  const last = sentences[sentences.length - 1]
+  const lastIdx = original.indexOf(last, firstIdx)
+  return lastIdx === -1
+    ? [firstIdx, firstIdx + sentences[0].length]
+    : [firstIdx, lastIdx + last.length]
+}
+
+function highlightText(original: string, quote: string): string {
+  if (!quote) return escapeHtml(original)
+  const range = findRange(original, quote)
+  if (!range) return escapeHtml(original)
+  const [s, e] = range
+  return (
+    escapeHtml(original.slice(0, s)) +
+    '<mark class="ew-highlight">' +
+    escapeHtml(original.slice(s, e)) +
+    '</mark>' +
+    escapeHtml(original.slice(e))
+  )
 }
 </script>
 
@@ -110,7 +182,10 @@ function closeModal() {
     <dialog ref="dialog" class="ew-modal" @click.self="closeModal">
       <div class="ew-modal-inner">
         <button class="ew-close" aria-label="关闭" @click="closeModal">✕</button>
-        <p class="ew-modal-text">{{ activeExp?.original_text }}</p>
+        <p
+          class="ew-modal-text"
+          v-html="highlightText(activeExp?.original_text ?? '', activeExp?.exact_quote ?? '')"
+        ></p>
         <footer v-if="activeExp" class="ew-footer ew-modal-footer">
           <span v-for="t in activeExp.tags" :key="t" class="ew-tag">{{ t }}</span>
           <span v-if="activeExp.alias" class="ew-alias">— {{ activeExp.alias }}</span>
@@ -292,5 +367,16 @@ function closeModal() {
 .ew-close:hover {
   color: var(--vp-c-text-1);
   background: var(--vp-c-bg-soft);
+}
+
+.ew-highlight {
+  background: rgba(190, 210, 245, 0.5);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+.dark .ew-highlight {
+  background: rgba(100, 150, 230, 0.22);
 }
 </style>
