@@ -1,6 +1,6 @@
 """
-Transform phase — per-row metadata extraction.
-LLM extracts tags + major only; original_text passes through unchanged.
+Transform phase — semantic chunking via LLM.
+Each survey response expands to 0-3 independent chunk records, one per dimension.
 """
 import json
 import logging
@@ -10,19 +10,18 @@ from pathlib import Path
 from openai import OpenAI, APIError, APITimeoutError, RateLimitError
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-from config import API_KEYS, LLM_ENDPOINTS, LLM_PROVIDER, row_id
+from config import API_KEYS, LLM_ENDPOINTS, LLM_PROVIDER
 
 logger = logging.getLogger(__name__)
 
-_BATCH_SIZE = 20
 _NAN_STRINGS = frozenset({"nan", "none", "null", ""})
+_VALID_CATS = frozenset({"pre-departure", "academics", "life-and-mindset"})
 
 
 def _clean_str(value) -> str | None:
     """Convert a value to stripped string, returning None for pandas NaN and blank values."""
     s = str(value).strip() if value is not None else ""
     return None if s.lower() in _NAN_STRINGS else s
-
 
 
 def _get_client() -> tuple[OpenAI, str]:
@@ -59,21 +58,16 @@ def _parse_json_array(raw: str) -> list[dict]:
         result = json.loads(text)
         return result if isinstance(result, list) else []
     except json.JSONDecodeError:
-        logger.warning("\033[33m[TRANSFORM-WARN]\033[0m JSON parse failed; skipping batch metadata.")
+        logger.warning("\033[33m[TRANSFORM-WARN]\033[0m JSON parse failed; skipping row.")
         return []
 
 
-def _extract_batch_metadata(batch: list[dict], start_idx: int) -> dict[int, dict]:
-    """Call LLM for one batch; return {global_idx: {tags, major}} mapping."""
-    client, model = _get_client()
+def _extract_chunks_for_row(client: OpenAI, model: str, row: dict, idx: int) -> list[dict]:
+    """Call LLM for a single row; return 0–3 validated chunk dicts."""
     template = _load_prompt("row_extraction.txt")
-    lines = []
-    for i, row in enumerate(batch):
-        lines.append(f"[{start_idx + i}]\n{row['response']}")
     prompt = template.format(
-        start=start_idx,
-        end=start_idx + len(batch) - 1,
-        responses="\n===\n".join(lines),
+        idx=idx,
+        response=str(row.get("response", "")).strip(),
     )
     raw = _call_llm(
         client, model,
@@ -82,48 +76,38 @@ def _extract_batch_metadata(batch: list[dict], start_idx: int) -> dict[int, dict
             {"role": "user",   "content": prompt},
         ],
     )
-    result: dict[int, dict] = {}
-    for item in _parse_json_array(raw):
-        idx = item.get("idx")
-        if isinstance(idx, int):
-            result[idx] = {"tags": item.get("tags", []), "major": item.get("major")}
-    return result
+    chunks = _parse_json_array(raw)
+    return [c for c in chunks if c.get("category") in _VALID_CATS]
 
 
 def extract_row_metadata(rows: list[dict]) -> list[dict]:
-    """Enrich each row with id, tags, major. original_text is unchanged."""
-    from extract import classify_category
-    _VALID_CATS = {"pre-departure", "academics", "life-and-mindset"}
-    enriched: list[dict] = []
+    """Semantic chunking: each row expands to 0–3 records, one per dimension."""
+    from config import row_id
+    records: list[dict] = []
     total = len(rows)
+    client, model = _get_client()
 
-    for batch_start in range(0, total, _BATCH_SIZE):
-        batch = rows[batch_start : batch_start + _BATCH_SIZE]
-        print(f"[TRANSFORM] Batch {batch_start + 1}–{batch_start + len(batch)} / {total}…")
+    for idx, row in enumerate(rows):
+        text = str(row.get("response", "")).strip()
+        print(f"[TRANSFORM] Row {idx + 1}/{total}…")
         try:
-            meta_map = _extract_batch_metadata(batch, batch_start)
+            chunks = _extract_chunks_for_row(client, model, row, idx)
         except Exception as exc:
-            print(f"[TRANSFORM] Batch failed: {exc}; empty metadata used.")
-            meta_map = {}
+            print(f"[TRANSFORM] Row {idx + 1} failed: {exc}; skipped.")
+            chunks = []
 
-        for j, row in enumerate(batch):
-            meta = meta_map.get(batch_start + j, {})
-            text = str(row.get("response", "")).strip()
-            tags = meta.get("tags") or []
-            category = _clean_str(row.get("category")) or ""
-            if category not in _VALID_CATS:
-                tags_text = " ".join([str(t) for t in tags])
-                if tags_text:
-                    category = classify_category(tags_text) or category
-            enriched.append({
-                "id":            row_id(text),
+        for chunk in chunks:
+            category = chunk.get("category", "")
+            records.append({
+                "id":            row_id(text, category),
                 "original_text": text,
                 "category":      category,
-                "tags":          tags,
+                "summary":       (chunk.get("summary") or "")[:50],
+                "tags":          chunk.get("tags") or [],
+                "major":         chunk.get("major") if category == "academics" else None,
                 "alias":         _clean_str(row.get("alias")),
-                "major":         meta.get("major"),
                 "source_file":   str(row.get("source_file", "")),
             })
 
-    print(f"[TRANSFORM] Enriched {len(enriched)} rows.")
-    return enriched
+    print(f"[TRANSFORM] {total} rows → {len(records)} chunk records.")
+    return records

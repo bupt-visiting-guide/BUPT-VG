@@ -17,7 +17,7 @@ _IMAGE_SUFFIXES = frozenset({
 })
 _DOCX_SUFFIXES = frozenset({".doc", ".docx"})
 _PDF_MIN_TEXT_CHARS = 20
-_MAX_TEXT_CHARS     = 5000
+_MAX_TEXT_CHARS     = 10000
 _TRUNCATION_SUFFIX  = "...[文本过长已截断]"
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -142,6 +142,35 @@ def _parse_pdf_bytes(raw: bytes, filename: str) -> str:
     return _truncate(text)
 
 
+def _extract_docx_text(doc) -> str:
+    """Extract all text from a python-docx Document, covering paragraphs and tables.
+
+    Word documents frequently store body content in tables rather than top-level
+    paragraphs (common for formatted guides and structured reports). Reading only
+    doc.paragraphs misses that content entirely, returning an empty string that
+    triggers the CORRUPTED_PLACEHOLDER path.  This helper reads both sources and
+    deduplicates merged table cells via their underlying XML element identity.
+    """
+    parts: list[str] = []
+
+    for p in doc.paragraphs:
+        if p.text.strip():
+            parts.append(p.text)
+
+    seen_cells: set[int] = set()
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                cell_key = id(cell._tc)
+                if cell_key in seen_cells:
+                    continue
+                seen_cells.add(cell_key)
+                if cell.text.strip():
+                    parts.append(cell.text)
+
+    return "\n".join(parts)
+
+
 def _parse_docx_path(path: Path) -> str:
     try:
         from docx import Document
@@ -150,7 +179,7 @@ def _parse_docx_path(path: Path) -> str:
         return "[DOCX_UNSUPPORTED: 请运行 pip install python-docx]"
     try:
         doc = Document(path)
-        text = "\n".join(p.text for p in doc.paragraphs if p.text.strip())
+        text = _extract_docx_text(doc)
         return _truncate(text) if text.strip() else _CORRUPTED_PLACEHOLDER
     except Exception as exc:
         logger.warning("\033[33m[PARSER-WARN]\033[0m Failed to parse DOCX %s: %s", path.name, exc)
@@ -166,7 +195,7 @@ def _parse_docx_bytes(raw: bytes, filename: str) -> str:
         return "[DOCX_UNSUPPORTED: 请运行 pip install python-docx]"
     try:
         doc = Document(io.BytesIO(raw))
-        text = "\n".join(p.text for p in doc.paragraphs if p.text.strip())
+        text = _extract_docx_text(doc)
         return _truncate(text) if text.strip() else _CORRUPTED_PLACEHOLDER
     except Exception as exc:
         logger.warning("\033[33m[PARSER-WARN]\033[0m Failed to parse DOCX %s: %s", filename, exc)

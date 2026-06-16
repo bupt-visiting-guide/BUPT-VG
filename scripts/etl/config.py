@@ -31,7 +31,12 @@ API_KEYS: dict[str, str] = {
 }
 
 
-def row_id(text: str) -> str:
-    """12-char MD5 of the raw response text; shared id contract for the whole pipeline."""
+def row_id(text: str, category: str) -> str:
+    """12-char MD5 of (text + category); unique per semantic chunk."""
+    return hashlib.md5((text + category).encode()).hexdigest()[:12]
+
+
+def source_hash(text: str) -> str:
+    """12-char MD5 of text only; used for dedup pre-filter in run.py."""
     return hashlib.md5(text.encode()).hexdigest()[:12]
 

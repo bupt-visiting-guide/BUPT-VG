@@ -5,6 +5,7 @@ interface Experience {
   id: string
   original_text: string
   category: string
+  summary: string
   tags: string[]
   alias: string | null
   major: string | null
@@ -94,7 +95,7 @@ function closeModal() {
         @keydown.enter="openModal(exp)"
         @keydown.space.prevent="openModal(exp)"
       >
-        <p class="ew-preview">{{ preview(exp.original_text) }}</p>
+        <p class="ew-preview">{{ exp.summary }}</p>
         <footer class="ew-footer">
           <span v-for="t in exp.tags" :key="t" class="ew-tag">{{ t }}</span>
           <span v-if="exp.alias" class="ew-alias">— {{ exp.alias }}</span>
