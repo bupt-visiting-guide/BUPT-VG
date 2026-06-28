@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./docs/public/logo.svg" alt="BUPT 访学指南 Logo" />
+</p>
+
 # BUPT 访学指南 — 维护手册
 
 基于 [VitePress](https://vitepress.dev) 的静态文档网站，汇聚北邮历届交流访学同学的问卷经验。数据以结构化 JSON 为单一数据源（SSOT），LLM 生成摘要、标签和原文摘录（exact_quote），原始文本 100% 保真；前端通过 Vue 组件异步渲染为可筛选的经验卡片墙，弹窗内原文高亮对应的摘录片段。Netlify 持续部署。
@@ -252,6 +256,12 @@ git push
 ---
 
 ## 7. 数据流与架构
+
+<p align="center">
+  <img src="./docs/public/architecture.png" alt="System Architecture Pipeline" />
+</p>
+
+> 上图展示了完整的系统架构流水线：左侧为数据接入层（离线 CSV / 在线表单 / Netlify API），中间为 ETL 与 LLM 核心处理层（Extract 脱敏 → Transform 语义分块 → Load 去重入库），右侧为展现与部署层（VitePress 静态生成 → Vue 组件异步渲染 → Netlify CDN 自动部署）。实线箭头表示自动化数据流，虚线箭头表示人工干预（如手动换 CSV、git push 触发部署）。
 
 ### ETL 管道
 

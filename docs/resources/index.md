@@ -65,15 +65,14 @@ const { frontmatter } = useData()
 
 | 名称 | 网址 | 说明 |
 |------|------|------|
-| **校园网账号管理** | [netaccount.bupt.edu.cn](https://netaccount.bupt.edu.cn) | 上网密码管理，初始密码为身份证后6位 |
+| **校园网账号管理** | [netaccount.bupt.edu.cn](https://netaccount.bupt.edu.cn) | 上网密码管理，初始密码为身份证后6位（字母用0代替）；**首次使用须先修改密码**，否则无法连接校园网 |
 | **WebVPN（网页版）** | [webvpn.bupt.edu.cn](https://webvpn.bupt.edu.cn) | 🌐 校外访问校内资源的**必备入口**，企业微信扫码登录 |
-| **VPN客户端版** | [vpn.bupt.edu.cn](https://vpn.bupt.edu.cn) | 下载ATrust VPN客户端，支持动态口令 |
-| **正版软件平台** | [software.bupt.edu.cn](http://software.bupt.edu.cn) | Windows / Office / Visual Studio 等正版授权 |
-| **MATLAB校园授权** | [mathworks.com](https://www.mathworks.com/academia/tah-portal/beijing-university-of-posts-and-telecommunications.html) | 北邮已购MATLAB全校授权 |
-| **一卡通管理** | [ecard.bupt.edu.cn](http://ecard.bupt.edu.cn) | 校园卡挂失、余额查询（也可通过企业微信"完美校园"充值） |
+| **VPN客户端版** | [vpn.bupt.edu.cn](https://vpn.bupt.edu.cn) | 下载 aTrust VPN 客户端；动态口令通过企业微信 → 校园网-自服务获取（每30秒刷新） |
+| **正版软件平台** | [software.bupt.edu.cn](http://software.bupt.edu.cn) | Windows / Office / MATLAB / Visual Studio 等正版授权；MATLAB 需在平台内进入 MATLAB 专区，用 @bupt.edu.cn 邮箱注册 MathWorks 账户后激活 |
+| **一卡通管理** | [ecard.bupt.edu.cn](http://ecard.bupt.edu.cn) | 校园卡挂失、余额查询；充值通过微信/支付宝搜索"完美校园"小程序，充值后需在食堂POS机圈存到账 |
 | **BUPT智慧体育** | 微信搜索"BUPT智慧体育"小程序 | 校园乐跑打卡 |
 
-> **校园WiFi**：SSID 为 `BUPT-portal`（PC）/ `BUPT-mobile`（手机），账号为10位学号，免费使用。
+> **校园WiFi**：SSID 为 `BUPT-portal`（PC / 校内资源免费，外网需计费认证）/ `BUPT-mobile`（手机 / 免流量，推荐）。账号为10位学号。**首次使用前**：先用初始密码登录 [netaccount.bupt.edu.cn](https://netaccount.bupt.edu.cn) 修改密码，否则无法连接。`BUPT-mobile` 需 802.1x 认证（PEAP/TTLS），首次连接后自动登录。
 
 ---
 

@@ -1,5 +1,6 @@
 import DefaultTheme from 'vitepress/theme'
 import type { Theme } from 'vitepress'
+import './style.css'
 import ExperienceForm from './components/ExperienceForm.vue'
 import ExperienceWall from './components/ExperienceWall.vue'
 

@@ -3,6 +3,9 @@ layout: home
 
 hero:
   name: BUPT 访学指南
+  image:
+    src: /logo.svg
+    alt: BUPT 访学指南 Logo
   text: 北邮同学的第一手经验与建议
   tagline: 汇聚历届交流访学同学的真实反馈，助你从容出发
   actions:

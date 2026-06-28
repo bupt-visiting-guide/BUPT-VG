@@ -127,6 +127,10 @@ git add docs/ && git commit -m "..." && git push  # 推送自动部署
 
 ## 6. 项目架构图
 
+![System Architecture Pipeline](./docs/public/architecture.png)
+
+> 完整的三区流水线架构图（16:9）：左侧数据接入层（离线 CSV / 在线表单 / Netlify API），中间 ETL & LLM 核心处理层（Extract 脱敏 → Transform 语义分块 → Load 去重入库），右侧展现与部署层（VitePress 静态生成 → Vue 组件异步渲染 → Netlify CDN 自动部署）。实线箭头 = 自动化数据流，虚线箭头 = 人工干预。
+
 ### 数据采集三通道
 
 ```

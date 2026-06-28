@@ -1,0 +1,25 @@
+/* 首页 Hero Logo 尺寸与居中 */
+/* 移除桌面端 32px 偏移，让 logo 真正居中 */
+.VPHero .image-container {
+  transform: none !important;
+}
+
+/* 覆盖 scoped 样式，放大 logo */
+.VPHero .image-src {
+  max-width: 420px !important;
+  max-height: 420px !important;
+}
+
+@media (min-width: 640px) {
+  .VPHero .image-src {
+    max-width: 500px !important;
+    max-height: 500px !important;
+  }
+}
+
+@media (min-width: 960px) {
+  .VPHero .image-src {
+    max-width: 560px !important;
+    max-height: 560px !important;
+  }
+}

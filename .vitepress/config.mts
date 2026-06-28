@@ -9,6 +9,8 @@ export default defineConfig({
   outDir: 'docs/.vitepress/dist',
 
   themeConfig: {
+    logo: '/logo.svg',
+
     nav: [
       { text: '首页', link: '/' },
       { text: '行前准备', link: '/pre-departure/' },
